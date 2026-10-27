@@ -1,0 +1,1419 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Servicedesk Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: helpdesk-applicatie — vaste HUD bovenaan, daaronder planning (weekkaarten) of een dienst in een drie-kolommen servicedesk */
+:root{
+  --bg:#e9edf2; --surface:#ffffff; --sunk:#f3f6f9; --ink:#16202b; --muted:#566475; --line:#d2dae2;
+  --accent:#1d5cc0; --accent-soft:#e1ebfa; --warn:#b86a0e; --warn-soft:#fbefdf; --ok:#2a7d52; --ok-soft:#e0f2e8; --bad:#c0392b;
+  --navy:#14263f; --navy-ink:#e7eef8;
+  --note:#fff6d6; --note-ink:#4a3d12; --note-line:#d8b64a; --agent-bg:#1d5cc0; --agent-ink:#ffffff;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e141b; --surface:#16202a; --sunk:#111922; --ink:#e2e8ee; --muted:#93a2b2; --line:#283543;
+  --accent:#72a6f2; --accent-soft:#1a2c46; --warn:#e6a24e; --warn-soft:#33260f; --ok:#5fc08d; --ok-soft:#14301f; --bad:#ef7a6c;
+  --navy:#0b1626; --navy-ink:#dbe6f4; --note:#3a3214; --note-ink:#f2e2a8; --note-line:#8a7430; --agent-bg:#2a5596; --agent-ink:#f2f6fb; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141b; --surface:#16202a; --sunk:#111922; --ink:#e2e8ee; --muted:#93a2b2; --line:#283543;
+  --accent:#72a6f2; --accent-soft:#1a2c46; --warn:#e6a24e; --warn-soft:#33260f; --ok:#5fc08d; --ok-soft:#14301f; --bad:#ef7a6c;
+  --navy:#0b1626; --navy-ink:#dbe6f4; --note:#3a3214; --note-ink:#f2e2a8; --note-line:#8a7430; --agent-bg:#2a5596; --agent-ink:#f2f6fb; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.15;text-wrap:balance}
+h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.5rem;font-weight:700}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:28px}
+#app{display:grid;gap:36px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 16px;font-weight:600;font-size:.94rem}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent}
+.btn.sm{padding:4px 10px;font-size:.82rem;background:transparent;color:var(--navy-ink);border-color:rgba(255,255,255,.25)}
+.btn.wide{width:100%}
+.wiz-actions{display:flex;flex-wrap:wrap;gap:10px}
+.pill{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.stars{color:var(--warn);letter-spacing:.06em}
+.stars .off{color:var(--line)}
+.stars.sm{font-size:1rem}.stars.big{font-size:2.3rem;line-height:1}
+.cat{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:4px;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.c-hw{background:#e6e9f7;color:#3b4aa0}.c-cab{background:#e3f1f4;color:#1f6b7a}.c-set{background:#f4ecdc;color:#8a5a12}
+.c-gpu{background:#f6e3e3;color:#9a3030}.c-drv{background:#e6f2e6;color:#2d6b31}.c-sw{background:#efe6f5;color:#6b3d8a}
+:root[data-theme="dark"] .cat{filter:saturate(.8) brightness(.75) contrast(1.2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cat{filter:saturate(.8) brightness(.75) contrast(1.2)}}
+
+/* HUD */
+.hudbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px))) calc(-1*max(16px,env(safe-area-inset-right,0px)));
+  background:var(--navy);color:var(--navy-ink);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.hud-in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--f-display);font-weight:700;font-size:1.05rem;background:none;border:0;padding:0;color:inherit}
+.sd-mark{display:grid;place-items:center;width:26px;height:26px;border-radius:6px;background:#3b82f6;color:#fff;font-size:.72rem;font-weight:800}
+#hud{display:flex;align-items:center;gap:16px;margin-left:auto;flex-wrap:wrap;min-width:0}
+.hud-l{display:grid;line-height:1.15}.hud-l small{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.hud-x{display:grid;gap:3px;min-width:180px}.hud-x .track{height:8px;border-radius:4px;background:rgba(255,255,255,.18);overflow:hidden}
+.hud-x .track i{display:block;height:100%;background:#f0a640;transition:width .5s}.hud-x span:last-child{font-family:var(--f-mono);font-size:.7rem;opacity:.8}
+.hud-b{font-family:var(--f-mono);font-size:.8rem;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 10px}
+
+/* Planning */
+.hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:28px;align-items:end;padding-top:32px}
+.hero-t{display:grid;gap:12px}.hero-t p{color:var(--muted);max-width:60ch;font-size:1.06rem}
+.player{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:8px}
+.player label{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.player input{font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--ink)}
+.pstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 0}
+.pstats dt{font-size:.74rem;color:var(--muted)}.pstats dd{margin:0;font-family:var(--f-display);font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums}
+.sec-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.unlock{font-size:.86rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.days{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.days.extra{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
+.dc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.dc.done{border-color:var(--ok)}.dc.locked{opacity:.6}
+.dc.exam{background:var(--navy);color:var(--navy-ink);border-color:var(--navy)}.dc.exam .dc-s{color:var(--navy-ink);opacity:.8}.dc.exam .dc-day{color:#f0a640}
+.dc-h{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.dc-day{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.dc-cats{display:flex;flex-wrap:wrap;gap:4px}.dc-s{font-size:.84rem;color:var(--muted)}
+.dc .btn{margin-top:auto}.dc-cats{align-items:flex-start}
+.steps{margin:0;padding-left:1.3em;display:grid;gap:6px;max-width:75ch}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.badge{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:4px;justify-items:start}
+.badge .ico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;background:var(--sunk);color:var(--muted);border:2px dashed var(--line)}
+.badge.got .ico{background:var(--warn);color:var(--surface);border:2px solid var(--warn)}
+.badge p{font-size:.82rem;color:var(--muted);line-height:1.35}.badge:not(.got){opacity:.7}
+
+/* Briefing */
+.brief{display:grid;gap:14px;max-width:720px;padding-top:32px}
+.brief-card{background:var(--note);color:var(--note-ink);border:1px dashed var(--note-line);border-radius:12px;padding:16px 18px;display:grid;gap:8px}
+.brief-card ul{margin:0;padding-left:1.2em;display:grid;gap:5px}
+.warnline{color:var(--warn);font-weight:600}
+
+/* Servicedesk */
+.sd{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--surface);margin-top:20px}
+.sd-top{display:flex;align-items:center;gap:16px;padding:10px 16px;background:#1d3557;color:var(--navy-ink);flex-wrap:wrap}
+.sd-logo{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700}
+.sd-day{font-size:.88rem;opacity:.9}
+.sd-prog{display:flex;align-items:center;gap:4px}.sd-prog i{width:18px;height:5px;border-radius:3px;background:rgba(255,255,255,.2)}
+.sd-prog i.d{background:#5fc08d}.sd-prog i.a{background:#f0a640}.sd-prog small{font-family:var(--f-mono);font-size:.7rem;opacity:.8;margin-left:6px}
+.sd-me{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:.84rem}
+.sd-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.25)}
+.sd-body{display:grid;grid-template-columns:200px minmax(0,1fr) 300px;min-height:660px}
+.sd-side{border-right:1px solid var(--line);background:var(--sunk);padding:12px 10px;display:grid;align-content:start;gap:4px}
+.sd-side h4,.composer h4,.det-card h4{margin:0;font-family:var(--f-mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.sd-side h4{margin:4px 4px 6px}
+.conv{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 8px;border-radius:8px}
+.conv b{display:block;font-size:.9rem;line-height:1.2}.conv small{display:block;font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv.active{background:var(--surface);box-shadow:inset 3px 0 0 var(--accent)}.conv.new{background:var(--accent-soft)}.conv.done{opacity:.75}.conv.wait{opacity:.55}
+.badge-n{background:#e5484d;color:#fff;border-radius:999px;font-size:.7rem;font-weight:700;padding:1px 7px}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#c7d7ee;color:#1d3a66;font-weight:700;font-size:.72rem;flex:0 0 auto}
+.av.lg{width:40px;height:40px;font-size:.88rem}
+:root[data-theme="dark"] .av{background:#28406a;color:#d6e4fa}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .av{background:#28406a;color:#d6e4fa}}
+.sd-main{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-width:0}
+.sd-head{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.sd-head .pill{margin-left:auto}
+.h-who{display:grid;line-height:1.2;min-width:0}.h-who small{color:var(--muted);font-size:.8rem}
+.st-inbehandeling{background:var(--accent-soft);color:var(--accent)}.st-terplaatse{background:var(--warn-soft);color:var(--warn)}
+.st-opgelost,.st-gesloten{background:var(--ok-soft);color:var(--ok)}
+.onsite{border-bottom:1px solid var(--line);background:#0f151c;padding:10px 12px;display:grid;gap:8px}
+.os-h{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;color:#d6e2ef;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}
+.runbar{height:4px;border-radius:2px;background:#283543;overflow:hidden}.runbar i{display:block;height:100%;width:0;background:#72a6f2}
+#scene svg{display:block;width:100%;max-height:310px;height:auto;border-radius:6px}
+.thread{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;height:430px;scroll-behavior:smooth}
+.row{display:flex;gap:8px;align-items:flex-end;max-width:85%;animation:pop .25s ease-out}
+.row.user{align-self:flex-start}.row.agent{align-self:flex-end;flex-direction:row-reverse}
+.bub{padding:9px 13px;border-radius:14px;font-size:.95rem;line-height:1.45;min-width:0}
+.row.user .bub{background:var(--sunk);border:1px solid var(--line);border-bottom-left-radius:4px}
+.row.agent .bub{background:var(--agent-bg);color:var(--agent-ink);border-bottom-right-radius:4px}
+.typing .bub{display:flex;gap:8px;align-items:center}.typing small{color:var(--muted);font-size:.78rem}
+.dots{display:flex;gap:3px}.dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:dot 1s infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+.photo{width:min(340px,62vw);border-radius:8px;overflow:hidden}.photo svg{display:block;width:100%;height:auto}
+.ph-cap{display:block;font-family:var(--f-mono);font-size:.66rem;color:var(--muted);margin-top:4px}
+.sysmsg{align-self:center;font-size:.78rem;color:var(--muted);background:var(--sunk);border-radius:999px;padding:3px 12px;text-align:center;animation:pop .25s ease-out}
+.note-i{align-self:stretch;background:var(--note);border:1px dashed var(--note-line);border-radius:8px;padding:8px 12px;font-size:.9rem;color:var(--note-ink);animation:pop .25s ease-out}
+.note-i.good{background:var(--ok-soft);border-color:var(--ok);color:var(--ink)}.note-i.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--ink)}
+.ni-h{display:flex;gap:6px;align-items:center;font-size:.72rem;opacity:.9;margin-bottom:3px}
+.ava{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--surface);font-family:var(--f-display);font-weight:800;font-size:.64rem;flex:0 0 auto}
+.obs-c{align-self:stretch;border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 8px 8px 0;padding:6px 12px;font-size:.92rem;animation:pop .25s ease-out}
+.obs-c.good{border-left-color:var(--ok)}.obs-c .meta{display:block;font-family:var(--f-mono);font-size:.66rem;color:var(--muted)}
+.incoming{margin:auto;display:grid;gap:14px;justify-items:center;text-align:center;max-width:440px}
+.inc-card{display:flex;gap:12px;text-align:left;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:14px;animation:ring 1.6s ease-in-out infinite}
+.inc-card p{margin:4px 0;font-size:.95rem}.inc-card small{font-family:var(--f-mono);font-size:.72rem;color:var(--warn)}
+.composer{border-top:1px solid var(--line);padding:10px 14px 14px;display:grid;gap:10px;background:var(--sunk)}
+.composer:empty{display:none}
+.ctabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.ctab{border:0;background:none;padding:6px 12px;font-weight:600;font-size:.88rem;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.ctab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.cg{display:grid;gap:5px}.cg h5{margin:0;font-size:.74rem;color:var(--muted);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:.88rem;display:flex;gap:7px;align-items:baseline;text-align:left}
+.chip:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
+.chip .c{font-family:var(--f-mono);font-size:.66rem;color:var(--muted)}
+.chip:disabled{opacity:.4;cursor:default}
+.chip.go{border-color:var(--warn);color:var(--warn);font-weight:600}
+.chip.locked::before{content:"🔒";font-size:.7rem}
+.chip.ghost{background:transparent;border-style:dashed}
+.chip.right{opacity:1;border-color:var(--ok);background:var(--ok-soft)}.chip.wrong{opacity:1;border-color:var(--warn);background:var(--warn-soft)}
+.hintline{font-size:.8rem;color:var(--muted)}
+.sd-det{border-left:1px solid var(--line);background:var(--sunk);padding:12px;display:grid;align-content:start;gap:12px;min-width:0}
+.det-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:10px}
+.det-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0;font-size:.88rem}.kv dt{color:var(--muted)}.kv dd{margin:0}
+.det-time{display:flex;justify-content:space-between;align-items:end;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.det-time b{display:block;font-family:var(--f-display);font-size:1.6rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.goal{display:grid;justify-items:end}.goal small{font-family:var(--f-mono);font-size:.66rem;color:var(--muted)}
+.alive{font-family:var(--f-mono);font-size:.72rem;color:var(--accent);font-variant-numeric:tabular-nums}
+.hyp{display:grid;gap:5px;max-height:380px;overflow-y:auto}
+.hy{display:grid;gap:3px;justify-items:start;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 9px;font-size:.88rem}
+.hy:hover:not(:disabled){border-color:var(--accent)}
+.hy.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.outlist summary{cursor:pointer;font-size:.82rem;color:var(--muted)}
+.outlist{display:grid;gap:4px}.outlist .hy{opacity:.6;background:transparent;margin-top:4px}
+.outlist .hy-t{text-decoration:line-through}.hy-why{font-family:var(--f-mono);font-size:.64rem;color:var(--warn)}
+.endcard{align-self:stretch;display:grid;gap:12px;background:var(--surface);border:1px solid var(--ok);border-radius:10px;padding:16px;animation:pop .3s ease-out}
+.end-top{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0}
+.stats div{background:var(--sunk);border-radius:8px;padding:8px 10px}
+.stats dt{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:0;font-family:var(--f-display);font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums}
+.stats small{font-size:.72rem;color:var(--muted)}
+.quiz{background:var(--note);color:var(--note-ink);border:1px dashed var(--note-line);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
+.quiz .chip{color:var(--ink)}.qq{font-weight:600}.qfb.good{color:var(--ok);font-weight:600}.qfb.bad{color:var(--warn);font-weight:600}
+
+/* Rapport */
+.report{display:grid;gap:18px;padding-top:28px;max-width:960px}
+.rep-h{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap}
+.score-big{display:grid;justify-items:end;line-height:1}.score-big b{font-family:var(--f-display);font-size:3.6rem;font-weight:800}
+.score-big span{font-family:var(--f-mono);color:var(--muted)}.score-big small{font-weight:700;color:var(--accent);margin-top:4px}
+.tblwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+tr:last-child td{border-bottom:0}th{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--sunk)}
+.note-box{background:var(--warn-soft);border-radius:8px;padding:10px 14px;font-weight:600}
+
+.toasts{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;z-index:20;pointer-events:none}
+.toast{background:var(--ink);color:var(--bg);border-radius:8px;padding:10px 14px;font-weight:600;font-size:.92rem;box-shadow:0 8px 24px -8px rgba(0,0,0,.4);animation:pop .3s ease-out}
+.toast.gold{background:var(--warn);color:var(--surface)}
+
+/* Hulpniveaus, bewijs, nabespreking */
+.dc-help{display:flex;gap:6px;align-items:center;font-size:.78rem;color:var(--muted)}
+.dc.exam .dc-help{color:var(--navy-ink);opacity:.85}
+.hdots{font-size:.6rem;letter-spacing:2px;color:var(--ok)}.h2 .hdots{color:var(--warn)}.h3 .hdots{color:var(--bad)}
+.help-card{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.help-card .hdots{font-size:.8rem;margin-top:4px}.help-card p{color:var(--muted);font-size:.94rem}
+.tiny{font-size:.8rem;color:var(--muted)}
+.hyrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:stretch}
+.strike{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:0 9px;font-size:.8rem;color:var(--bad)}
+.strike:hover:not(:disabled){border-color:var(--bad);background:var(--warn-soft)}
+.strike.back{color:var(--accent);margin-top:4px}
+.diagform{gap:8px}.diagform label,.diagform .lbl{font-size:.8rem;font-weight:600;color:var(--muted)}
+.diagform select{font:inherit;font-size:.9rem;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--sunk);color:var(--ink);max-width:100%}
+.evlist{display:grid;gap:5px;max-height:300px;overflow-y:auto}
+.evi{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:.84rem;cursor:pointer}
+.evi:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.evi b{display:block;font-size:.8rem}.evi span{min-width:0;overflow-wrap:anywhere}.sd-det .det-card{min-width:0}.diagform select{width:100%}.evi input{margin-top:3px}
+.notes{display:grid;gap:6px;max-height:340px;overflow-y:auto}
+.nt{border-left:3px solid var(--accent);padding:2px 0 2px 8px;font-size:.84rem;display:grid}.nt b{font-size:.78rem}
+.debrief{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.debrief h4{margin:0;font-family:var(--f-mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.route{display:grid;gap:5px}.rl{font-size:.8rem;font-weight:700}
+.steps2{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:5px;counter-reset:s}
+.st{counter-increment:s;border:1px solid var(--line);border-left-width:4px;border-radius:6px;padding:4px 8px;display:grid;font-size:.82rem;background:var(--surface)}
+.st b{font-weight:600}.st b::before{content:counter(s) ". ";color:var(--muted);font-weight:400}.st small{font-size:.7rem;color:var(--muted)}
+.st.good{border-left-color:var(--ok)}.st.fix{border-left-color:var(--accent);background:var(--accent-soft)}.st.none{border-left-color:var(--line);opacity:.75}
+.st.bad{border-left-color:var(--bad);background:var(--warn-soft)}.st.move{border-left-color:var(--warn)}.st.info{border-left-color:#8a6fc4}.st.ideal{border-left-color:var(--ok);background:var(--ok-soft)}
+.why{font-size:.88rem}.warnc{color:var(--warn)}
+/* Rapportcodes */
+.codebox{display:grid;gap:8px;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:14px}
+.codeline{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.codebox .codeline{grid-template-columns:minmax(0,1fr) auto}
+.codeline code{font-family:var(--f-mono);font-size:.74rem;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-wrap:anywhere;user-select:all}
+.codes{display:grid;gap:6px}.codes .codeline span{font-size:.84rem;color:var(--muted);white-space:nowrap}
+.btn.sm2{padding:5px 10px;font-size:.82rem}
+.tlock summary{cursor:pointer;color:var(--muted);font-size:.9rem}
+.tl-in{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.tl-in label{font-size:.84rem;color:var(--muted)}.tl-in input{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--sunk);color:var(--ink)}
+.teacher{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.teacher .sec-h{margin-bottom:0}.th3{font-size:1.05rem;margin-top:6px}
+.paste{display:grid;gap:8px}.paste textarea{font-family:var(--f-mono);font-size:.78rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--ink);resize:vertical;width:100%}
+.dd{display:inline-block;width:22px;text-align:center;font-family:var(--f-mono);font-size:.62rem;border-radius:4px;margin-right:2px;background:var(--sunk);color:var(--muted)}
+.dd.on{background:var(--ok-soft);color:var(--ok);font-weight:700}
+.okc{color:var(--ok)}.badc{color:var(--bad)}
+.bar{display:inline-block;width:60px;height:7px;border-radius:4px;background:var(--line);overflow:hidden;vertical-align:middle}.bar i{display:block;height:100%;background:var(--warn)}
+tr.hard td:first-child{font-weight:700}tr.hard{background:var(--warn-soft)}
+.empty{color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:14px;text-align:center}
+.tfoot{justify-content:space-between;align-items:center}.tfoot code{font-family:var(--f-mono);font-size:.8rem}
+
+/* Trainingsruimte en poort aanwijzen */
+.tgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.tcard p{font-size:.9rem;color:var(--muted)}.tcard .btn{margin-top:auto}
+.trainv{display:grid;gap:10px;padding-top:24px;max-width:860px}
+.tgame{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;margin-top:6px}
+.game-top{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--f-mono);font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums}.game-top b{color:var(--ink)}
+.portview{display:grid;place-items:center;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:18px}.portview svg{width:100%;max-width:280px;height:auto}
+.opts{display:grid;gap:8px}
+.opt{text-align:left;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.opt:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}.opt:disabled{cursor:default}
+.opt.right{background:var(--ok-soft);border-color:var(--ok)}.opt.right::after{content:"✓";color:var(--ok);font-weight:700}
+.opt.wrong{background:var(--warn-soft);border-color:var(--warn)}.opt.wrong::after{content:"✕";color:var(--warn);font-weight:700}
+.task{background:var(--sunk);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:8px;padding:12px 14px;display:grid;gap:4px}
+.fb{border-radius:8px;padding:10px 14px;background:var(--sunk);display:grid;gap:4px}.fb.ok{background:var(--ok-soft)}.fb.no{background:var(--warn-soft)}.fb.hintb{background:var(--accent-soft)}
+.panelwrap{overflow-x:auto;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px}
+.panelwrap svg{display:block;width:100%;min-width:300px;max-width:520px;height:auto;margin:0 auto}
+.panelwrap.sm svg{max-width:400px}
+.hit{cursor:pointer}.hit .hl{fill:transparent;stroke:transparent;stroke-width:2}
+.hit:hover .hl,.hit:focus-visible .hl{fill:color-mix(in srgb,var(--accent) 18%,transparent);stroke:var(--accent)}.hit:focus{outline:none}
+.hit.ok .hl{fill:color-mix(in srgb,var(--ok) 30%,transparent);stroke:var(--ok)}.hit.no .hl{fill:color-mix(in srgb,var(--warn) 25%,transparent);stroke:var(--warn)}
+.case{fill:var(--surface);stroke:var(--line);stroke-width:2}.plate{fill:var(--bg);stroke:var(--line)}
+.lbl{fill:var(--muted);font-family:var(--f-mono);font-size:9px;letter-spacing:.08em}
+.portpick{align-self:stretch;border:1px solid var(--accent);border-radius:10px;padding:10px 12px;display:grid;gap:8px;background:var(--surface);animation:pop .25s ease-out}
+.portpick .meta{font-family:var(--f-mono);font-size:.66rem;color:var(--muted)}
+.pp-msg{font-size:.9rem;font-weight:600}.pp-msg.ok{color:var(--ok)}.pp-msg.no{color:var(--warn)}
+@media (max-width:780px){.tgrid{grid-template-columns:1fr}}
+
+@keyframes pop{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+@keyframes dot{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+@keyframes ring{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 35%,transparent)}50%{box-shadow:0 0 0 8px transparent}}
+.pulse{animation:pulse .8s ease-in-out infinite alternate}@keyframes pulse{from{filter:none}to{filter:drop-shadow(0 0 6px #ffd166) drop-shadow(0 0 2px #ffd166)}}
+.blink{animation:blink 1.4s steps(2,start) infinite}@keyframes blink{50%{opacity:.25}}
+.breath{animation:breath 2.4s ease-in-out infinite}@keyframes breath{50%{opacity:.15}}
+.spin,.fan{transform-box:fill-box;transform-origin:center;animation:spin 1s linear infinite}.fan{animation-duration:.5s}@keyframes spin{to{transform:rotate(360deg)}}
+.float{animation:float 1.2s ease-in-out infinite alternate}@keyframes float{to{transform:translateY(-6px)}}
+.flick{animation:flick .35s steps(2,start) infinite}@keyframes flick{50%{opacity:.1}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.pulse{filter:drop-shadow(0 0 4px #ffd166)}}
+
+@media (max-width:1100px){.sd-body{grid-template-columns:minmax(0,1fr) 280px}.sd-side{display:none}.days{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:780px){.hudbar{position:static}.hud-x span:last-child{display:none}.hud-x{min-width:90px}#hud{gap:10px}.hero{grid-template-columns:1fr}.days,.days.extra{grid-template-columns:1fr 1fr}.sd-body{grid-template-columns:1fr}
+  .sd-det{border-left:0;border-top:1px solid var(--line)}.thread{height:400px}.row{max-width:94%}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hud-x{min-width:120px}.sd-day{display:none}}
+@media (max-width:480px){.days,.days.extra{grid-template-columns:1fr}}
+</style>
+
+<header class="hudbar"><div class="hud-in"><button class="brand" id="brand"><span class="sd-mark">IT</span>Servicedesk Simulator</button><div id="hud"></div></div></header>
+<main class="wrap"><div id="app"></div></main>
+<div class="toasts" id="toasts"></div>
+<script>
+/* ================= DATA ================= */
+const CATS={hw:"Hardware",cab:"Kabels",set:"Instellingen",gpu:"Grafische kaart",drv:"Drivers",sw:"Software"};
+const DEFA={led:"orange",pc:"on",scr:"nosig",boot:"none",dbg:null,setup:"direct",port:"gpu",mon:0,wk:"now"};
+const FAULTS=[
+ {id:"mon_power",cat:"hw",d:"Monitor krijgt geen stroom",a:{led:"off",scr:"off",boot:"monoff",mon:1},fix:["mpower"],par:4,
+  u:"Mijn scherm doet helemaal niets meer.",ch:"Niet dat ik weet. De poetsdienst is gisteren wel langs geweest.",
+  sol:"De stroomkabel van je scherm zat los. Ik heb hem weer ingestoken.",route:"Lampje monitor (uit) → stroomkabel monitor.",
+  q:["Het lampje van de monitor brandt niet. Wat controleer je eerst?","De stroomkabel en de aan/uit-knop van de monitor","De grafische driver","Het werkgeheugen"]},
+ {id:"pc_power",cat:"hw",d:"Pc krijgt geen stroom (schakelaar voeding)",a:{pc:"off",boot:"dead"},fix:["pcpower"],par:4,
+  u:"Mijn computer start niet en mijn scherm blijft zwart.",ch:"Ik heb vanochtend een nieuwe stekkerdoos gekregen.",
+  sol:"De schakelaar achteraan op de voeding stond op O. Ik heb hem op I gezet.",route:"Staat de pc aan? (nee) → stroomkabel en schakelaar van de pc.",
+  q:["Wat betekent de stand 'O' op de schakelaar van een voeding?","Uit","Aan","Stand-by"]},
+ {id:"sleep",cat:"set",d:"Pc staat in slaapstand",a:{pc:"sleep",wk:"break"},fix:["wake","boot"],par:4,
+  u:"Ik kwam terug en mijn scherm blijft zwart.",ch:"Niks. Ik ben gewoon een uurtje in vergadering geweest.",
+  sol:"Je pc stond in slaapstand. Hij is weer wakker.",route:"Wanneer? (na pauze) → staat de pc aan? (lampje knippert traag) → wekken.",
+  q:["Het aan/uit-lampje van de pc knippert traag. Wat betekent dat meestal?","De pc staat in slaapstand","De voeding is defect","De grafische kaart is oververhit"]},
+ {id:"backlight",cat:"hw",d:"Achtergrondverlichting monitor defect",a:{led:"white",scr:"dark",boot:"sound",mon:1},fix:[],diagOnly:1,par:5,
+  u:"Ik hoor mijn computer opstarten, maar ik zie niets.",ch:"Niets veranderd. Het scherm is wel al oud en flikkerde de laatste dagen soms.",
+  sol:"De achtergrondverlichting van je scherm is defect. Je krijgt vandaag een vervangscherm.",route:"Lampje (wit) → scherm zwart zonder melding → zaklamptest (vaag beeld).",
+  q:["Met een zaklamp zie je vaag het bureaublad. Wat is defect?","De achtergrondverlichting","De beeldkabel","De grafische driver"]},
+ {id:"brightness",cat:"set",d:"Helderheid van de monitor op 0",a:{led:"white",scr:"dim",boot:"dim",mon:1},fix:["brightness"],par:4,
+  u:"Mijn scherm is zo goed als zwart.",ch:"Mijn zoontje heeft gisteren aan de knopjes van het scherm gezeten.",
+  sol:"De helderheid van je scherm stond op 0. Ik heb ze weer hoger gezet.",route:"Wat zie je op het scherm? (heel donker) → helderheid hoger.",
+  q:["Het scherm is heel donker, maar het menu van de monitor verschijnt wel. Wat probeer je eerst?","De helderheid verhogen","Een nieuwe grafische kaart plaatsen","De CMOS resetten"]},
+ {id:"ram",cat:"hw",d:"Werkgeheugen (RAM) zit niet goed",a:{pc:"loud",dbg:"DRAM"},fix:["ram"],par:20,
+  u:"Mijn pc start, maar ik krijg geen beeld.",ch:"Er is gisteren extra geheugen bijgestoken, om de pc sneller te maken.",
+  sol:"Een geheugenreepje zat scheef. Ik heb het correct geplaatst.",route:"Staat de pc aan? (luid) → ter plaatse → debug-lampjes (DRAM) → geheugen opnieuw plaatsen.",
+  q:["Op het moederbord brandt het lampje DRAM. Welk onderdeel controleer je?","Het werkgeheugen","De grafische kaart","De harde schijf"]},
+ {id:"bios_oc",cat:"hw",d:"Foute BIOS-instelling (overklokken)",a:{dbg:"CPU"},fix:["cmos"],par:14,
+  u:"Sinds gisteren krijg ik geen beeld meer, zelfs geen logo.",ch:"Ik heb in het BIOS de processor wat sneller gezet. Overklokken heet dat toch?",
+  sol:"Een foute BIOS-instelling verhinderde het opstarten. Ik heb het BIOS teruggezet naar de standaardinstellingen.",route:"Wat is er veranderd? (overklokken) → ter plaatse → CMOS resetten.",
+  q:["Hoe zet je het BIOS terug naar de fabrieksinstellingen als je geen beeld hebt?","CMOS resetten met de jumper of het batterijtje","Win + P drukken","De driver terugdraaien"]},
+ {id:"mobo_port",cat:"cab",d:"Kabel in het moederbord i.p.v. de grafische kaart",a:{port:"mobo"},fix:["port"],par:9,
+  u:"Ik heb gisteren een upgrade laten doen en sindsdien heb ik geen beeld.",ch:"Iemand van ICT heeft een nieuwe grafische kaart geplaatst en alles weer aangesloten.",
+  sol:"De beeldkabel zat in het moederbord. Ik heb hem in de grafische kaart gestoken.",route:"Wat is er veranderd? (grafische kaart) → ter plaatse → waar zit de kabel?",
+  q:["Een pc heeft een aparte grafische kaart. Waar steek je de beeldkabel in?","In de grafische kaart","In het moederbord","Dat maakt niet uit"]},
+ {id:"loose",cat:"cab",d:"Beeldkabel zit los",a:{},fix:["reseat","cable"],par:5,
+  u:"Ik heb mijn bureau verplaatst en nu is er geen beeld.",ch:"Ik heb mijn bureau een halve meter opgeschoven.",
+  sol:"De beeldkabel zat half los. Ik heb hem stevig aangesloten.",route:"Wat is er veranderd? (bureau verschoven) → kabel opnieuw insteken.",
+  q:["Een DisplayPort-stekker zit vast. Hoe trek je hem eruit?","Het knopje op de stekker indrukken","Hard trekken","Heen en weer wiebelen"]},
+ {id:"broken",cat:"cab",d:"Beeldkabel is defect",a:{},fix:["cable"],par:12,
+  u:"Ineens geen beeld meer. Ik heb niets veranderd.",ch:"Niets. De kabel lag wel al een tijdje geplooid achter mijn bureau.",
+  sol:"De beeldkabel was defect. Ik heb hem vervangen.",route:"Kabel opnieuw insteken (helpt niet) → ter plaatse → andere kabel.",
+  q:["Waarom test je met een andere kabel voor je onderdelen vervangt?","Kabels kunnen intern breken","Nieuwe kabels zijn sneller","Om de driver te resetten"]},
+ {id:"adapter",cat:"cab",d:"Passief verloopstuk werkt niet",a:{setup:"adapter"},fix:["direct"],par:10,
+  u:"Mijn nieuwe scherm geeft geen beeld.",ch:"Ik heb een nieuw scherm. De stekker paste niet, dus ik heb een goedkoop verloopstukje gekocht.",
+  sol:"Het verloopstuk werkte niet met jouw grafische kaart. Ik heb het scherm rechtstreeks aangesloten met een HDMI-kabel.",route:"Hoe aangesloten? (verloopstuk) → ter plaatse → rechtstreeks aansluiten.",
+  q:["Een passief verloopstuk van DisplayPort naar HDMI geeft geen beeld. Wat is de beste oplossing?","Rechtstreeks aansluiten of een actieve adapter gebruiken","De resolutie verhogen","Een andere muis gebruiken"]},
+ {id:"dock",cat:"cab",d:"Docking station geeft geen beeld door",a:{setup:"dock",pc:"laptop",boot:"dock"},fix:["direct"],par:11,
+  u:"Mijn laptop werkt, maar het grote scherm blijft zwart.",ch:"Ik heb gisteren een nieuw docking station gekregen.",
+  sol:"De USB-C-poort van het dock gaf geen beeld door. Ik heb het scherm rechtstreeks op je laptop aangesloten.",route:"Hoe aangesloten? (docking station) → ter plaatse → rechtstreeks aansluiten.",
+  q:["Niet elke USB-C-poort geeft beeld door. Waar let je op?","Het DisplayPort- of Thunderbolt-symbool naast de poort","De kleur van de poort","Het aantal pinnen"]},
+ {id:"wrong_input",cat:"set",d:"Monitor staat op de verkeerde ingang",a:{led:"white",scr:"nosig-hdmi",mon:1},fix:["input"],par:4,
+  u:"Na de schoonmaak van het lokaal krijg ik geen beeld meer.",ch:"De poetsdienst heeft gisteren alles afgestoft, ook mijn scherm.",
+  sol:"Je scherm stond op de verkeerde ingang. Ik heb het op DisplayPort gezet.",route:"Wat zie je op het scherm? ('Geen signaal – HDMI 1') → ingang in het menu.",
+  q:["Het scherm meldt 'Geen signaal – HDMI 1', maar de kabel zit in DisplayPort. Wat doe je?","De ingang wijzigen in het menu van de monitor","De kabel vervangen","De pc herstarten"]},
+ {id:"winp",cat:"set",d:"Beeld gaat naar een ander scherm (projectiemodus)",a:{boot:"logo-login-black",wk:"login"},fix:["winp"],par:4,
+  u:"Na het aanmelden is alles zwart.",ch:"Gisteren gaf ik les met de beamer. Ik heb de kabel er daarna gewoon uitgetrokken.",
+  sol:"Windows stuurde het beeld nog naar de beamer. Ik heb het op 'Alleen pc-scherm' gezet.",route:"Wanneer? (na het aanmelden) → Win + P.",
+  q:["Welke sneltoets kiest naar welk scherm Windows het beeld stuurt?","Win + P","Win + D","Ctrl + Alt + Del"]},
+ {id:"range",cat:"set",d:"Resolutie of frequentie te hoog",a:{scr:"range",boot:"logo-range",wk:"windows"},fix:["lowres"],par:12,
+  u:"Op mijn scherm staat een rare Engelse melding.",ch:"Ik heb gisteren in de instellingen mijn scherm op 144 Hz gezet, voor vlottere beelden.",
+  sol:"Je scherm kreeg een frequentie die het niet aankan. Ik heb een ondersteunde instelling gekozen.",route:"Wat zie je op het scherm? ('Out of range') → ter plaatse → opstarten met lage resolutie.",
+  q:["Wat betekent 'Out of range' op een monitor?","De resolutie of frequentie wordt niet ondersteund","De kabel is defect","De monitor krijgt geen stroom"]},
+ {id:"gpu_power",cat:"gpu",d:"Grafische kaart krijgt geen stroom",a:{dbg:"VGA"},fix:["gpupower"],par:20,
+  u:"Ik heb gisteren de kast schoongemaakt en nu is er geen beeld.",ch:"Ik heb de binnenkant van de pc met perslucht schoongeblazen.",
+  sol:"De stroomkabel van de grafische kaart zat los. Ik heb hem aangesloten.",route:"Staat de pc aan? → ter plaatse → debug-lampjes (VGA) → stroomkabels grafische kaart.",
+  q:["Het VGA-lampje op het moederbord brandt. Wat controleer je eerst?","Stroomkabels en plaatsing van de grafische kaart","Het werkgeheugen","De netwerkkabel"]},
+ {id:"gpu_seat",cat:"gpu",d:"Grafische kaart zit niet goed in de sleuf",a:{dbg:"VGA"},fix:["gpuseat"],par:28,
+  u:"Mijn pc is verhuisd en geeft geen beeld meer.",ch:"De pc is gisteren met de auto naar een ander lokaal gebracht.",
+  sol:"Door het transport zat de grafische kaart niet meer goed in de sleuf. Ik heb ze stevig teruggeplaatst en vastgeschroefd.",route:"Ter plaatse → debug-lampjes (VGA) → stroomkabels (kaart staat scheef) → kaart opnieuw in de sleuf.",
+  q:["Waarom schroef je een grafische kaart vast aan de kast?","Zodat ze niet loskomt of doorbuigt","Voor een betere koeling","Dat hoeft niet"]},
+ {id:"overheat",cat:"gpu",d:"Grafische kaart oververhit",a:{pc:"loud",boot:"works",wk:"load"},fix:["gpuclean"],par:20,
+  u:"Tijdens het werken in mijn 3D-programma valt het beeld telkens weg.",ch:"Niets veranderd. De pc staat wel al jaren onder mijn bureau, naast de verwarming.",
+  sol:"Je grafische kaart werd te heet door stof en een vastgelopen ventilator. Ik heb ze schoongemaakt.",route:"Wanneer? (bij zware programma's) → ter plaatse → temperatuur meten → kaart schoonmaken.",
+  q:["Een grafische kaart wordt 98 °C. Wat gebeurt er?","Ze schakelt uit om zichzelf te beschermen","Ze wordt sneller","Niets, dat is normaal"]},
+ {id:"psu_weak",cat:"gpu",d:"Voeding te zwak voor de grafische kaart",a:{boot:"works",wk:"load"},fix:[],diagOnly:1,par:15,
+  u:"Bij zware programma's wordt mijn scherm zwart en herstart de pc soms.",ch:"Ik heb vorige week zelf een krachtige grafische kaart in mijn oude pc gestoken.",
+  sol:"Je voeding is te zwak voor je nieuwe grafische kaart. Ik bestel een sterkere voeding.",route:"Wanneer? (bij zware programma's) → ter plaatse → temperatuur (normaal) → vermogen voeding.",
+  q:["Hoe controleer je of een voeding sterk genoeg is?","Het vermogen vergelijken met wat de fabrikant van de kaart aanbeveelt","De kleur van de kabels bekijken","De ventilatoren tellen"]},
+ {id:"driver_update",cat:"drv",d:"Grafische driver defect na update",a:{boot:"logo-nosig",wk:"windows"},fix:["rollback","ddu"],par:22,
+  u:"Hij start wel op, maar dan valt het beeld weg.",ch:"Gisteravond stond er 'Updates worden geïnstalleerd' op mijn scherm.",
+  sol:"Een update gaf problemen met de grafische driver. Ik heb de vorige driver teruggezet.",route:"Wanneer? (zodra Windows laadt) → ter plaatse → veilige modus → Apparaatbeheer → driver terugdraaien.",
+  q:["Waarom start je in veilige modus bij een driverprobleem?","Windows gebruikt dan een eenvoudige standaarddriver","Dan start de pc sneller","Om het BIOS te resetten"]},
+ {id:"driver_conflict",cat:"drv",d:"Conflict met resten van een oude driver",a:{boot:"logo-flicker",scr:"flicker",wk:"windows"},fix:["ddu"],par:22,
+  u:"Mijn beeld flikkert en valt telkens weg.",ch:"Ik heb mijn NVIDIA-kaart vervangen door een AMD-kaart. De oude driver heb ik laten staan.",
+  sol:"Resten van de oude driver botsten met de nieuwe. Ik heb alles verwijderd met DDU en de juiste driver geïnstalleerd.",route:"Wat is er veranderd? (andere kaart) → wat zie je? (flikkert) → ter plaatse → DDU.",
+  q:["Waarvoor dient DDU (Display Driver Uninstaller)?","Alle resten van grafische drivers verwijderen","De temperatuur meten","Het geheugen testen"]},
+ {id:"driver_hang",cat:"drv",d:"Grafische driver vastgelopen",a:{boot:"works",wk:"break"},fix:["drvreset","boot"],par:5,
+  u:"Na de middagpauze is mijn scherm zwart gebleven.",ch:"Niets. Ik heb gewoon mijn middagpauze gehouden.",
+  sol:"De grafische driver was vastgelopen. Met Win + Ctrl + Shift + B heb je hem herstart. Gebeurt het vaker, dan installeren we een nieuwe driver.",route:"Wanneer? (na de pauze) → staat de pc aan? (normaal) → Win + Ctrl + Shift + B.",
+  q:["Welke sneltoets herstart de grafische driver?","Win + Ctrl + Shift + B","Win + P","Ctrl + Shift + Esc"]},
+ {id:"explorer",cat:"sw",d:"Verkenner (explorer.exe) start niet",a:{led:"white",scr:"cursor",boot:"logo-cursor",wk:"login"},fix:["taskmgr"],par:4,
+  u:"Na het aanmelden zie ik alleen mijn muispijltje.",ch:"Ik heb gisteren een gratis programma geïnstalleerd om mijn pc sneller te maken.",
+  sol:"De verkenner (explorer.exe) startte niet. Ik heb hem opnieuw gestart via Taakbeheer. Verwijder dat 'pc-sneller'-programma best.",route:"Wat zie je op het scherm? (alleen de muis) → Ctrl + Shift + Esc → explorer.exe.",
+  q:["Zwart scherm met alleen een muiscursor. Wat start je opnieuw?","explorer.exe via Taakbeheer","De grafische driver","Het BIOS"]},
+ {id:"energy",cat:"sw",d:"Scherm schakelt uit door energie-instellingen",a:{boot:"works",wk:"idle"},fix:["energy"],par:4,
+  u:"Mijn scherm gaat telkens zwart.",ch:"Ik denk dat mijn collega aan de instellingen heeft gezeten om stroom te besparen.",
+  sol:"Je scherm schakelde na 1 minuut uit om energie te besparen. Ik heb dat op 15 minuten gezet.",route:"Wanneer? (na een minuut niets doen) → energie-instellingen.",
+  q:["Waar stel je in na hoeveel minuten het scherm uitschakelt?","Instellingen › Systeem › Energie","Apparaatbeheer","Het BIOS"]}
+];
+FAULTS.forEach(f=>f.a=Object.assign({},DEFA,f.a));
+const FX=id=>FAULTS.find(f=>f.id===id);
+const US={"mon_power": ["Mijn scherm doet helemaal niets meer.", "Mijn computer lijkt kapot, ik zie niks.", "Ik kan niet werken: mijn scherm blijft zwart."], "pc_power": ["Mijn computer start niet en mijn scherm blijft zwart.", "Ik heb geen beeld vandaag.", "Er gebeurt niks als ik wil beginnen werken."], "sleep": ["Ik kwam terug en mijn scherm blijft zwart.", "Mijn scherm is zwart.", "Alles is donker, wat moet ik doen?"], "backlight": ["Ik hoor mijn computer opstarten, maar ik zie niets.", "Mijn scherm blijft zwart.", "Ik heb geen beeld meer."], "brightness": ["Mijn scherm is zo goed als zwart.", "Ik zie bijna niks op mijn scherm.", "Mijn scherm is kapot, denk ik."], "ram": ["Mijn pc start, maar ik krijg geen beeld.", "Geen beeld, en de pc maakt veel lawaai.", "Mijn computer doet raar en ik heb geen beeld."], "bios_oc": ["Sinds gisteren krijg ik geen beeld meer, zelfs geen logo.", "Ik heb geen beeld meer.", "Mijn pc toont niks meer."], "mobo_port": ["Ik heb gisteren een upgrade laten doen en sindsdien heb ik geen beeld.", "Geen beeld sinds gisteren.", "Mijn scherm zegt dat er geen signaal is."], "loose": ["Ik heb mijn bureau verplaatst en nu is er geen beeld.", "Mijn scherm zegt 'geen signaal'.", "Ik heb ineens geen beeld meer."], "broken": ["Ineens geen beeld meer. Ik heb niets veranderd.", "Mijn scherm zegt 'geen signaal'.", "Geen beeld vandaag."], "adapter": ["Mijn nieuwe scherm geeft geen beeld.", "Ik krijg geen beeld op mijn scherm.", "Er staat 'geen signaal' op mijn scherm."], "dock": ["Mijn laptop werkt, maar het grote scherm blijft zwart.", "Mijn tweede scherm doet het niet.", "Het scherm op mijn bureau blijft zwart."], "wrong_input": ["Na de schoonmaak van het lokaal krijg ik geen beeld meer.", "Er staat iets van 'geen signaal'.", "Mijn scherm werkt niet."], "winp": ["Na het aanmelden is alles zwart.", "Mijn scherm wordt zwart.", "Ik zie niks meer op mijn scherm."], "range": ["Op mijn scherm staat een rare Engelse melding.", "Mijn scherm toont een foutmelding.", "Ik krijg mijn bureaublad niet te zien."], "gpu_power": ["Ik heb gisteren de kast schoongemaakt en nu is er geen beeld.", "Geen beeld, maar de pc draait wel.", "Mijn pc start, mijn scherm niet."], "gpu_seat": ["Mijn pc is verhuisd en geeft geen beeld meer.", "Ik heb geen beeld.", "Mijn scherm blijft zwart, de pc draait wel."], "overheat": ["Tijdens het werken in mijn 3D-programma valt het beeld telkens weg.", "Mijn beeld valt soms weg.", "Ineens werd mijn scherm zwart."], "psu_weak": ["Bij zware programma's wordt mijn scherm zwart en herstart de pc soms.", "Mijn pc valt af en toe uit.", "Mijn scherm werd plots zwart."], "driver_update": ["Hij start wel op, maar dan valt het beeld weg.", "Mijn scherm wordt zwart.", "Geen beeld sinds vanochtend."], "driver_conflict": ["Mijn beeld flikkert en valt telkens weg.", "Mijn scherm doet raar.", "Ik heb geen fatsoenlijk beeld."], "driver_hang": ["Na de middagpauze is mijn scherm zwart gebleven.", "Mijn scherm is zwart.", "Ik zie niks meer."], "explorer": ["Na het aanmelden zie ik alleen mijn muispijltje.", "Mijn bureaublad is weg.", "Mijn scherm is zwart."], "energy": ["Mijn scherm gaat telkens zwart.", "Mijn scherm valt steeds uit.", "Mijn beeld verdwijnt de hele tijd."]};
+const RT={"mon_power": "led mpower", "pc_power": "pcon pcpower", "sleep": "when pcon wake", "backlight": "led osd flash", "brightness": "osd brightness", "ram": "pcon onsite debug ram", "bios_oc": "change onsite cmos", "mobo_port": "change onsite port", "loose": "change reseat", "broken": "reseat onsite cable", "adapter": "setup onsite direct", "dock": "setup onsite direct", "wrong_input": "osd input", "winp": "when winp", "range": "osd onsite lowres", "gpu_power": "pcon onsite debug gpupower", "gpu_seat": "onsite debug gpupower gpuseat", "overheat": "when onsite temp gpuclean", "psu_weak": "when pcon onsite temp psu", "driver_update": "when onsite safe devmgr rollback", "driver_conflict": "change osd onsite ddu", "driver_hang": "when pcon drvreset", "explorer": "osd taskmgr", "energy": "when energy"};
+FAULTS.forEach(f=>{f.us=US[f.id];f.rt=RT[f.id].split(" ")});
+
+
+const DAYS=[
+ {id:"ma",help:1,day:"Maandag",t:"Eerste werkdag",list:["mon_power","wrong_input","loose","pc_power","sleep"],
+  tips:["Begin altijd bij de eenvoudigste oorzaak: stroom, lampjes en kabels.","Het lampje van de monitor zegt veel: uit = geen stroom, oranje knipperend = geen signaal, wit = aan.","Begroet de gebruiker en vraag wat er veranderd is. Dat spaart vaak veel tijd.","Ter plaatse gaan kost 5 minuten. Probeer eerst via de chat."]},
+ {id:"di",help:1,day:"Dinsdag",t:"Instellingen en scherm",list:["winp","brightness","range","energy","backlight"],
+  tips:["Zie je het logo bij het opstarten? Dan werken hardware en kabel. Zoek het in Windows of in een instelling.","Win + P kiest naar welk scherm het beeld gaat.","'Out of range' betekent: resolutie of frequentie te hoog. Start dan met 'video met lage resolutie'.","Met een zaklamp schuin op het scherm test je de achtergrondverlichting."]},
+ {id:"wo",help:2,day:"Woensdag",t:"Kabels en aansluitingen",list:["mobo_port","broken","adapter","dock"],
+  tips:["Heeft de pc een grafische kaart? Dan moet de kabel in de kaart, niet in het moederbord.","Verloopstukken en docking stations zijn vaak de boosdoener. Test rechtstreeks.","Niet elke USB-C-poort geeft beeld: zoek het DisplayPort- of Thunderbolt-symbool.","Wissel eerst de kabel voor je een duur onderdeel vervangt."]},
+ {id:"do",help:2,day:"Donderdag",t:"In de kast",list:["ram","gpu_power","bios_oc","gpu_seat","overheat"],
+  tips:["Open de kast pas na de eenvoudige controles.","De debug-lampjes op het moederbord (CPU, DRAM, VGA, BOOT) wijzen het onderdeel aan.","Een grafische kaart heeft vaak extra stroomkabels nodig.","Valt het beeld weg bij zware programma's? Meet de temperatuur."]},
+ {id:"vr",help:3,day:"Vrijdag",t:"Drivers, software en voeding",list:["driver_hang","explorer","driver_update","driver_conflict","psu_weak"],
+  tips:["Beeld bij het opstarten, zwart in Windows: denk aan de driver.","Veilige modus gebruikt een standaarddriver. Van daaruit kan je herstellen.","DDU verwijdert alle resten van oude drivers.","Zwart scherm met muiscursor? Start explorer.exe via Ctrl + Shift + Esc."]}
+];
+const EXTRA_MODES=[
+ {id:"vrij",help:2,day:"Vrije dienst",t:"Vijf willekeurige meldingen",tips:["Vijf willekeurige meldingen uit alle onderdelen.","Gebruik alles wat je deze week geleerd hebt.","Sam kijkt mee en tips blijven beschikbaar. Je streept zelf oorzaken weg."]},
+ {id:"examen",help:3,day:"Examen",t:"Zes meldingen, één per onderdeel",exam:1,tips:["Zes meldingen: één per onderdeel.","Sam kijkt niet mee en er zijn geen tips, kennisvragen of lijst met oorzaken.","Bij je diagnose duid je aan welke waarnemingen het bewijs zijn. Je krijgt een score op 100."]}
+];
+const PEOPLE=[["Inge","Administratie","de administratie"],["Youssef","Boekhouding","de boekhouding"],["Lotte","Lokaal B2.04","lokaal B2.04"],["Pieter","Onthaal","het onthaal"],
+ ["Amira","Lerarenkamer","de lerarenkamer"],["Jonas","Lokaal A1.12","lokaal A1.12"],["Marie","Secretariaat","het secretariaat"],["Bram","Directie","de directie"],
+ ["Sofie","Bibliotheek","de bibliotheek"],["Ahmed","Lokaal C0.08","lokaal C0.08"],["Elise","Personeelsdienst","de personeelsdienst"],["Tom","Technisch atelier","het technisch atelier"]];
+
+/* Tests: id -> [chip label (chat), agent question, tech label, cost, where] ; where: q=vraag, d=laat doen, o=ter plaatse */
+const T={
+ change:["Wat is er veranderd?","Is er de laatste dagen iets veranderd aan je computer of je bureau?","Vraag wat er veranderd is",1,"q"],
+ when:["Wanneer gebeurt het?","Wanneer gebeurt het precies? Altijd, of op bepaalde momenten?","Vraag wanneer het gebeurt",1,"q"],
+ setup:["Hoe aangesloten?","Hoe is je scherm aangesloten op je computer?","Vraag hoe het scherm aangesloten is",1,"q"],
+ led:["Lampje van het scherm?","Brandt er een lampje op je scherm? Welke kleur heeft het?","Bekijk het lampje van de monitor",1,"q"],
+ pcon:["Staat de pc aan?","Staat je computer aan? Hoor je de ventilator of zie je een lampje?","Controleer of de pc draait",1,"q"],
+ osd:["Wat zie je op het scherm?","Staat er een melding op het scherm? Wat zie je precies?","Bekijk wat er op het scherm staat",1,"q"],
+ photo:["Vraag een foto","Kun je een foto van je scherm en je computer sturen?","",2,"q"],
+ flash:["Zaklamptest","Schijn eens met de zaklamp van je gsm schuin op het scherm. Zie je iets?","Zaklamp schuin op het scherm",1,"q"],
+ wake:["Muis bewegen / wekken","Beweeg eens met de muis, druk op een toets, of druk heel kort op de aan/uit-knop van de pc.","Muis bewegen en pc wekken",1,"d"],
+ mpower:["Stroomkabel scherm","Kun je controleren of de stroomkabel van je scherm goed in de stekkerdoos zit?","Controleer de stroomkabel van de monitor",2,"d"],
+ pcpower:["Stroom en schakelaar pc","Kun je achteraan de pc kijken of de stroomkabel goed zit, en op welke stand het schakelaartje staat?","Controleer stroomkabel en schakelaar van de pc",2,"d"],
+ input:["Ingang van het scherm","Druk op de menuknop van je scherm. Welke ingang is er gekozen?","Controleer de ingang in het monitormenu",2,"d"],
+ brightness:["Helderheid hoger","Open het menu van je scherm en zet de helderheid hoger. Verandert er iets?","Zet de helderheid hoger",2,"d"],
+ reseat:["Kabel opnieuw insteken","Kun je de kabel tussen scherm en pc aan beide kanten uittrekken en weer stevig insteken?","Beeldkabel uittrekken en stevig terugsteken",2,"d"],
+ boot:["Pc herstarten","Kun je de computer herstarten en me vertellen wat je ziet?","Herstart en kijk naar het opstartscherm",3,"d"],
+ winp:["Win + P","Druk eens tegelijk op de Windows-toets en P, en kies 'Alleen pc-scherm'.","Druk Win + P, kies 'Alleen pc-scherm'",1,"d"],
+ drvreset:["Win + Ctrl + Shift + B","Druk eens tegelijk op Windows + Ctrl + Shift + B.","Druk Win + Ctrl + Shift + B",1,"d"],
+ taskmgr:["Taakbeheer → explorer.exe","Druk Ctrl + Shift + Esc. Kies in Taakbeheer 'Nieuwe taak uitvoeren', typ explorer.exe en druk Enter.","Taakbeheer → explorer.exe starten",2,"d"],
+ energy:["Energie-instellingen","Open Instellingen › Systeem › Energie. Na hoeveel minuten schakelt het scherm uit?","Bekijk de energie-instellingen",2,"d"],
+ port:["","","Bekijk waar de beeldkabel zit",2,"o1"],
+ cable:["","","Probeer een andere beeldkabel",4,"o1"],
+ direct:["","","Sluit rechtstreeks aan, zonder adapter of dock",3,"o1"],
+ othermon:["","","Sluit een andere monitor aan",6,"o1"],
+ safe:["","","Start in veilige modus",6,"o2"],
+ lowres:["","","Start met 'video met lage resolutie'",5,"o2"],
+ devmgr:["","","Open Apparaatbeheer",3,"o2"],
+ rollback:["","","Draai de grafische driver terug",4,"o2"],
+ ddu:["","","Schone driverinstallatie met DDU",12,"o2"],
+ temp:["","","Meet de temperatuur met HWiNFO",3,"o2"],
+ debug:["","","Bekijk de debug-lampjes op het moederbord",5,"o3"],
+ gpupower:["","","Controleer de stroomkabels van de grafische kaart",8,"o3"],
+ gpuseat:["","","Druk de grafische kaart opnieuw in de sleuf",8,"o3"],
+ gpuclean:["","","Maak de ventilatoren van de kaart schoon",10,"o3"],
+ ram:["","","Plaats het geheugen opnieuw",8,"o3"],
+ psu:["","","Bekijk het vermogen van de voeding",4,"o3"],
+ cmos:["","","Reset de CMOS",6,"o3"]
+};
+const GROUPS={q:["change","when","setup","led","pcon","osd","photo","flash"],d:["wake","mpower","pcpower","input","brightness","reseat","boot","winp","drvreset","taskmgr","energy"],
+ o1:["port","cable","direct","othermon"],o2:["safe","lowres","devmgr","rollback","ddu","temp"],o3:["debug","gpupower","gpuseat","gpuclean","ram","psu","cmos"]};
+const OPEN_CASE=["debug","gpupower","gpuseat","gpuclean","ram","psu","cmos"];
+
+/* ================= WAARNEMINGEN ================= */
+const SAFE=a=>a.boot.startsWith("logo")||a.boot==="works";
+const WIN=a=>a.boot==="works";
+const LAP=a=>a.setup==="dock";
+const has=(F,t)=>F.fix.includes(t);
+const R=(k,t,u)=>({k,t,u:u||t});
+const FIXR=(F,t,u)=>R("fix:"+F.id,t,u);
+const OBS={
+ change:F=>R("x",F.ch),
+ when:F=>{const W={now:"Sinds vanochtend. Ik heb nog geen beeld gehad.",login:"Telkens net na het aanmelden.",windows:"Bij het opstarten, zodra Windows geladen wordt.",
+   load:"Alleen bij zware programma's. Na een herstart werkt het weer even.",break:"Toen ik terugkwam van mijn pauze.",idle:"Telkens als ik even niets doe, na ongeveer een minuut."};return R(F.a.wk,W[F.a.wk])},
+ setup:F=>({direct:R("direct","Gewoon met een kabel van het scherm naar de computer."),adapter:R("adapter","Met een kabel en een klein verloopstukje aan de pc, want de stekker paste niet."),
+   dock:R("dock","Mijn laptop zit in een docking station, en het scherm hangt aan dat docking station.")})[F.a.setup],
+ led:F=>({off:R("off","Het lampje van de monitor is uit.","Nee, er brandt helemaal geen lampje."),orange:R("orange","Het lampje knippert oranje: de monitor staat aan maar ontvangt geen signaal.","Ja, er knippert een oranje lampje onderaan."),
+   white:R("white","Het lampje van de monitor brandt continu wit.","Er brandt een wit lampje.")})[F.a.led],
+ pcon:F=>({on:R("on","De pc draait: ventilatoren hoorbaar, aan/uit-lampje brandt.","Ja hoor, de pc maakt gewoon geluid en het lampje brandt."),
+   loud:R("loud","De pc draait. De ventilatoren blazen op volle snelheid.","Ja, en hij blaast heel hard, veel luider dan normaal."),
+   off:R("off","De pc is volledig uit: geen lampje, geen geluid.","Nee, er gebeurt niks. Geen lampje, geen geluid."),
+   sleep:R("sleep","Het aan/uit-lampje van de pc knippert traag. Geen ventilatorgeluid.","Het lampje op de pc knippert heel traag, aan en uit."),
+   laptop:R("laptop","De laptop staat aan en zijn eigen scherm werkt.","Mijn laptop zelf werkt gewoon, alleen het grote scherm niet.")})[F.a.pc],
+ osd:F=>({nosig:R("nosig","Melding 'Geen signaal', daarna gaat de monitor in stand-by.","Er staat 'Geen signaal' en dan wordt het helemaal zwart."),
+   "nosig-hdmi":R("nosig-hdmi","Melding: 'Geen signaal – HDMI 1'.","Er staat 'Geen signaal – HDMI 1'."),
+   off:R("off","Het scherm is volledig uit, zonder melding.","Er staat niks. Het scherm is gewoon helemaal uit."),
+   dark:R("dark","Het scherm is zwart, zonder enige melding.","Het scherm is gewoon zwart, er staat niks op."),
+   dim:R("dim","Het scherm is heel donker. Van dichtbij zie je vaag het bureaublad.","Het is heel donker, maar als ik dicht bij het scherm kom, zie ik vaag iets."),
+   range:R("range","Melding: 'Out of range'.","Er staat iets in het Engels: 'Out of range'."),
+   cursor:R("cursor","Zwart scherm met alleen een muiscursor. Geen taakbalk.","Alles is zwart, maar ik kan de muis wel bewegen."),
+   flicker:R("flicker","Het beeld flikkert en valt telkens weg.","Het flikkert de hele tijd en dan is het weer weg.")})[F.a.scr],
+ flash:F=>F.id==="backlight"?R("faint","Met de zaklamp zie je vaag het bureaublad!","Ah wacht, met de zaklamp zie ik heel vaag mijn bureaublad!"):
+   F.a.scr==="dim"?R("dim","Met de zaklamp verandert er weinig; het beeld is er, maar heel donker.","Het blijft heel donker, maar ik zie wel iets."):
+   R("none","Met de zaklamp zie je niets extra.","Ik zie niks extra."),
+ wake:F=>has(F,"wake")?FIXR(F,"De pc wordt wakker en het beeld komt terug!","Oh, de pc wordt wakker en mijn beeld is terug!"):
+   F.id==="energy"?R("brief","Het beeld komt terug, maar na een minuutje wordt het weer zwart.","Het beeld komt terug! … Maar na een minuutje is het weer zwart."):
+   R("none","Er gebeurt niets.","Ik heb de muis bewogen, maar er gebeurt niks."),
+ mpower:F=>has(F,"mpower")?FIXR(F,"De stroomkabel van de monitor zat los. Je steekt hem in: het scherm springt aan.","Oei… de stekker lag naast de stekkerdoos. Ik heb hem ingestoken en het scherm springt aan!"):
+   R("ok","De stroomkabel van de monitor zit goed.","Die stekker zit erin, ja."),
+ pcpower:F=>has(F,"pcpower")?FIXR(F,"De schakelaar achteraan de voeding stond op O. Je zet hem op I: de pc start.","Achteraan stond een schakelaartje op O. Ik heb het op I gezet en de pc start!"):
+   LAP(F.a)?R("ok","De laptop hangt aan de lader en staat aan.","Mijn laptop hangt aan de lader, ja."):R("ok","Stroomkabel en schakelaar van de pc zijn in orde.","Die zitten goed, en het schakelaartje staat op I."),
+ input:F=>["off","dark"].includes(F.a.scr)?R("nomenu","Het menu van de monitor verschijnt niet.",F.a.scr==="off"?"Als ik op de knoppen druk, gebeurt er niets.":"Ik druk op de menuknop, maar ik zie geen menu."):
+   has(F,"input")?FIXR(F,"De monitor staat op HDMI 1, maar de kabel zit in DisplayPort. Je schakelt om: beeld!","Er staat HDMI 1… Oh, als ik DisplayPort kies, heb ik beeld!"):
+   R("ok",`De monitor staat op ${F.a.setup==="adapter"?"HDMI 1":"DisplayPort"}, de ingang waar de kabel in zit.`,`Er staat ${F.a.setup==="adapter"?"HDMI 1":"DisplayPort"} aangeduid, denk ik?`),
+ brightness:F=>has(F,"brightness")?FIXR(F,"De helderheid stond op 0. Je zet ze op 80: alles is weer zichtbaar.","De helderheid stond op 0! Nu zie ik alles weer."):
+   ["off","dark"].includes(F.a.scr)?R("nomenu","Het menu van de monitor verschijnt niet.","Ik zie geen menu verschijnen."):R("ok","De helderheid staat op 80. Geen verschil.","Die staat al hoog. Er verandert niks."),
+ reseat:F=>has(F,"reseat")?FIXR(F,"De stekker zat half los aan de kant van de monitor. Je duwt hem stevig aan: beeld!","Aan de achterkant van het scherm zat hij half los! Nu stevig ingeduwd en ik heb beeld!"):
+   R("same","De kabel zat goed. Geen verandering.","Gedaan, maar er verandert niks."),
+ boot:F=>{
+   if(has(F,"boot"))return F.id==="sleep"?FIXR(F,"De pc wordt wakker en herstart: er is beeld.","Ik heb op de knop gedrukt en mijn beeld is terug!"):FIXR(F,"Na de herstart is er weer beeld.","Na het herstarten heb ik weer beeld!");
+   const B={none:R("none","Na herstart: geen logo, geen beeld.","Ik heb herstart, maar ik zie nog altijd niks. Geen logo, niets."),
+    "logo-nosig":R("logo-nosig","Je ziet het logo van de fabrikant en het laadrondje van Windows. Daarna wordt het zwart: 'Geen signaal'.","Na het herstarten zie ik het logo en het laadrondje, en dan is het weer zwart."),
+    "logo-login-black":R("logo-login","Je ziet het logo en Windows laden. Na het aanmelden wordt alles zwart.","Ik zie het logo en Windows start, maar na het aanmelden is alles zwart."),
+    "logo-range":R("logo-range","Je ziet het logo, daarna verschijnt 'Out of range'.","Ik zie eerst het logo, en dan weer die Engelse melding."),
+    "logo-cursor":R("logo-cursor","Je ziet het logo en het aanmeldscherm. Na het aanmelden: zwart met alleen een muiscursor.","Ik kan me aanmelden, maar daarna zie ik alleen de muis op een zwart scherm."),
+    "logo-flicker":R("logo-flicker","Je ziet het logo. Zodra Windows laadt, begint het beeld te flikkeren en valt het weg.","Het logo komt, en dan begint het weer te flikkeren."),
+    monoff:R("monoff","De pc herstart normaal; de monitor blijft volledig uit.","De pc start opnieuw, ik hoor hem, maar het scherm blijft volledig uit."),
+    sound:R("sound","Je hoort Windows opstarten, het scherm blijft zwart.","Ik hoor het Windows-geluidje, maar het scherm blijft zwart."),
+    dim:R("dim","Je hoort Windows opstarten; het scherm blijft heel donker.","Hij start, maar het blijft heel donker."),
+    dead:R("dead","De pc reageert niet op de aan/uit-knop.","Als ik op de knop druk, gebeurt er niks."),
+    works:R("works","Na herstart is er weer beeld. Alles lijkt voorlopig normaal.","Na het herstarten heb ik weer beeld. Maar ik vrees dat het straks weer gebeurt."),
+    dock:R("dock","De laptop herstart; zijn eigen scherm werkt, het externe scherm blijft zwart.","De laptop start opnieuw, maar het grote scherm blijft zwart.")};
+   return B[F.a.boot]},
+ winp:F=>has(F,"winp")?FIXR(F,"Windows stond op 'Alleen tweede scherm'. Je kiest 'Alleen pc-scherm': beeld!","Ik druk Windows + P… en daar is mijn bureaublad! Super!"):R("none","Je ziet niets veranderen.","Ik heb dat gedrukt, maar ik zie niks gebeuren."),
+ drvreset:F=>has(F,"drvreset")?FIXR(F,"Je hoort een piepje, het scherm flitst even en het beeld is terug!","Er piepte iets, het scherm flitste en mijn beeld is terug!"):
+   ["driver_update","driver_conflict"].includes(F.id)?R("flash","Het scherm flitst even, daarna weer zwart.","Het scherm flitste even, maar daarna weer zwart."):R("none","Geen verandering.","Er piepte iets, maar verder niks."),
+ taskmgr:F=>has(F,"taskmgr")?FIXR(F,"Taakbeheer opent. Je start explorer.exe: de taakbalk en het bureaublad verschijnen!","Taakbeheer verscheen, ik heb explorer.exe getypt… en mijn bureaublad is terug!"):R("none","Je ziet niets verschijnen.","Ik zie niks verschijnen."),
+ energy:F=>has(F,"energy")?FIXR(F,"Bij 'Scherm uitschakelen na' staat 1 minuut. Je zet het op 15 minuten.","Er staat '1 minuut'! Ik heb het op 15 minuten gezet, zoals je zei."):
+   WIN(F.a)?R("ok","Na een herstart kan je kijken: er staat 15 minuten. Dat is normaal.","Na het herstarten had ik even beeld: er staat 15 minuten."):R("na","Zonder beeld kan je de instellingen niet openen.","Ik kan niks openen, ik heb geen beeld."),
+ port:F=>LAP(F.a)?R("dock","Het scherm hangt aan het docking station, dat met USB-C aan de laptop zit."):F.a.setup==="adapter"?R("adapter","De kabel zit via een klein passief verloopstuk (DisplayPort naar HDMI) in de grafische kaart."):
+   has(F,"port")?FIXR(F,"De kabel zit in een poort naast de USB-aansluitingen: het moederbord. Lager zit de grafische kaart met vrije poorten. Je verplaatst de kabel: beeld!"):R("gpu","De beeldkabel zit in de grafische kaart."),
+ cable:F=>F.id==="loose"?FIXR(F,"Met een andere kabel: beeld! (De oude kabel zat eigenlijk half los.)"):has(F,"cable")?FIXR(F,"Met een andere kabel: beeld! De oude kabel is defect."):
+   R("same",F.a.setup==="adapter"?"Ook met een andere kabel (via hetzelfde verloopstuk): geen beeld.":LAP(F.a)?"Ook met een andere kabel aan het dock: geen beeld.":"Ook met een andere kabel: geen beeld."),
+ direct:F=>has(F,"direct")?FIXR(F,LAP(F.a)?"Rechtstreeks op de USB-C-poort van de laptop: beeld!":"Zonder verloopstuk, met een HDMI-kabel rechtstreeks van kaart naar scherm: beeld!"):R("none","Er is geen verloopstuk of dock: de kabel zit al rechtstreeks."),
+ othermon:F=>F.a.mon?R("works","Een andere monitor aan deze pc: wel beeld! Het probleem zit bij de eerste monitor."):["loose","broken"].includes(F.id)?R("workscable","Een andere monitor met zijn eigen kabel: wel beeld."):R("same","Een andere monitor: hetzelfde probleem."),
+ safe:F=>SAFE(F.a)||has(F,"boot")?R("safe","In veilige modus is er beeld, in lage resolutie."):
+   ({dead:R("dead","De pc start niet."),monoff:R("monoff","De monitor blijft volledig uit."),sound:R("sound","Je hoort Windows, maar het scherm blijft zwart."),dim:R("dim","Het scherm blijft heel donker."),
+    dock:R("dock","Het scherm van de laptop toont veilige modus; het externe scherm blijft zwart.")})[F.a.boot]||R("nosafe","Ook bij opstarten in veilige modus: geen beeld."),
+ lowres:F=>has(F,"lowres")?FIXR(F,"Met 'video met lage resolutie' is er beeld! Je stelt daarna 60 Hz in: het probleem is opgelost."):
+   SAFE(F.a)||has(F,"boot")?R("low","Je krijgt beeld in lage resolutie, maar na een gewone herstart is het probleem terug."):F.a.boot==="dead"?R("dead","De pc start niet."):R("nolow","Ook met lage resolutie: geen beeld."),
+ devmgr:F=>!SAFE(F.a)?R("na","Zonder beeld kan je Apparaatbeheer niet openen."):F.id==="driver_update"?R("warn","Bij Beeldschermadapters staat een geel uitroepteken: 'Dit apparaat werkt niet goed (code 43)'."):
+   F.id==="driver_conflict"?R("conflict","Bij Beeldschermadapters staan twee kaarten: de nieuwe AMD-kaart én een oude NVIDIA-driver."):R("ok","Apparaatbeheer toont geen fouten bij Beeldschermadapters."),
+ rollback:F=>!SAFE(F.a)?R("na","Zonder beeld kan je de driver niet terugdraaien."):has(F,"rollback")?FIXR(F,"Je draait de driver terug naar de vorige versie. Na herstart: beeld!"):R("nohelp","Terugdraaien verandert niets."),
+ ddu:F=>!SAFE(F.a)?R("na","Zonder beeld kan je DDU niet gebruiken."):has(F,"ddu")?FIXR(F,"DDU verwijdert alle driverresten. Je installeert de nieuwste driver. Na herstart: beeld!"):R("nohelp","Een schone driverinstallatie verandert niets."),
+ temp:F=>!WIN(F.a)?R("na","Zonder werkend Windows kan je HWiNFO niet gebruiken."):F.id==="overheat"?R("hot","HWiNFO: na enkele minuten belasting haalt de grafische kaart 98 °C. Veel te heet!"):R("normal","HWiNFO: temperaturen normaal, ook onder belasting (GPU 68 °C)."),
+ debug:F=>LAP(F.a)?R("na","Een laptop heeft geen debug-lampjes."):F.a.pc==="off"?R("dead","Er brandt niets: de pc krijgt geen stroom."):F.a.dbg?R("d-"+F.a.dbg,`Het ${F.a.dbg}-lampje op het moederbord brandt oranje.`):R("d-none","Geen enkel debug-lampje brandt: de opstarttest is geslaagd."),
+ gpupower:F=>LAP(F.a)?R("na","Een laptop heeft geen losse grafische kaart."):has(F,"gpupower")?FIXR(F,"De 8-pins stroomkabel van de grafische kaart hing los. Je sluit hem aan: beeld!"):
+   F.id==="gpu_seat"?R("seat","De stroomkabels zitten vast, maar de kaart staat scheef in de sleuf."):F.id==="overheat"?R("dust","De stroomkabels zitten goed. De ventilatoren van de kaart zitten vol stof."):R("ok","De kaart zit goed en alle stroomkabels zitten vast."),
+ gpuseat:F=>LAP(F.a)?R("na","Een laptop heeft geen losse grafische kaart."):has(F,"gpuseat")?FIXR(F,"Je drukt de kaart stevig in de sleuf tot het klemmetje klikt en schroeft ze vast. De pc start: beeld!"):R("ok","De kaart zat al goed in de sleuf. Geen verandering."),
+ gpuclean:F=>LAP(F.a)?R("na","Een laptop heeft geen losse grafische kaart."):has(F,"gpuclean")?FIXR(F,"De ventilatoren zaten vol stof en één draaide niet meer. Na het schoonmaken blijft de kaart koel."):R("ok","De kaart is proper. Geen verschil."),
+ ram:F=>LAP(F.a)?R("na","Bij een laptop open je de kast niet voor een beeldprobleem."):has(F,"ram")?FIXR(F,"Een geheugenreepje zat scheef. Je duwt het aan tot het klikt. De pc start: beeld!"):R("ok","Geheugen opnieuw geplaatst. Geen verandering."),
+ psu:F=>LAP(F.a)?R("na","Een laptop heeft geen losse voeding."):F.id==="psu_weak"?R("weak","Op het label van de voeding staat 450 W. De grafische kaart vraagt minstens 750 W."):R("ok","Op het label van de voeding staat 750 W. Ruim voldoende."),
+ cmos:F=>LAP(F.a)?R("na","Bij een laptop reset je de CMOS niet voor een beeldprobleem."):has(F,"cmos")?FIXR(F,"Je reset de CMOS met de jumper. De pc start met standaardinstellingen: beeld!"):R("ok","CMOS gereset. Geen verandering.")
+};
+/* ================= WERKPLEK TEKENEN ================= */
+function scrSVG(state){
+  const X=82,Y=52,W=276,H=156,cx=X+W/2,cy=Y+H/2;
+  const bg=c=>`<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${c}"/>`;
+  const osd=(a,b)=>bg("#0b0e13")+`<rect x="${cx-78}" y="${cy-20}" width="156" height="40" rx="2" fill="#0f2240" stroke="#7aa6dc"/>
+    <text x="${cx}" y="${cy-3}" text-anchor="middle" font-size="13" font-weight="600" fill="#f1f5fb" font-family="system-ui">${a}</text><text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="9" fill="#a8c4e6" font-family="system-ui">${b}</text>`;
+  const desk=op=>`<g opacity="${op}"><rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#wall2)"/><circle cx="${X+210}" cy="${Y+40}" r="60" fill="#8cc6ef" opacity=".35"/>
+    ${[0,1,2].map(i=>`<rect x="${X+12}" y="${Y+12+i*30}" width="18" height="18" rx="3" fill="#e9eef5" opacity=".85"/>`).join("")}
+    <rect x="${X}" y="${Y+H-14}" width="${W}" height="14" fill="#141a24" opacity=".92"/>${[0,1,2,3,4].map(i=>`<rect x="${X+100+i*16}" y="${Y+H-11}" width="9" height="9" rx="2" fill="${i===0?"#7fb5ee":"#56606e"}"/>`).join("")}</g>`;
+  const wnd=(title,rows,col)=>desk(1)+`<rect x="${X+30}" y="${Y+16}" width="${W-60}" height="${H-40}" rx="3" fill="#f6f7f9"/><rect x="${X+30}" y="${Y+16}" width="${W-60}" height="14" rx="3" fill="#dfe5ec"/>
+    <text x="${X+38}" y="${Y+26}" font-size="8" fill="#273140" font-family="system-ui" font-weight="600">${title}</text>
+    ${rows.map((r,i)=>`<text x="${X+40}" y="${Y+46+i*15}" font-size="${i===0?9:8.5}" fill="${r[1]||"#273140"}" font-family="system-ui" ${r[2]?'font-weight="700"':""}>${r[0]}</text>`).join("")}`;
+  switch(state){
+  case"unknown":return bg("#0a0c0f");
+  case"off":return bg("#040506");
+  case"dark":return bg("#050608");
+  case"nosig":return osd("Geen signaal","DisplayPort · controleer de kabel");
+  case"nosig-hdmi":return osd("Geen signaal","HDMI 1 · controleer de kabel");
+  case"range":return osd("Out of range","Input not supported · 2560×1440 @ 144 Hz");
+  case"cursor":return bg("#020304")+`<path d="M${cx+20} ${cy-10} l0 16 l4 -4 l3 7 l3 -1 l-3 -7 l6 0 z" fill="#fff" stroke="#000" stroke-width=".6"/>`;
+  case"flicker":return `<g class="flick">${desk(1)}</g>`+[0,1,2,3,4,5].map(i=>`<rect x="${X}" y="${Y+i*27}" width="${W}" height="6" fill="#fff" opacity=".35"/>`).join("");
+  case"dim":return bg("#030405")+desk(.09);
+  case"faint":return bg("#040506")+desk(.17);
+  case"menu":return bg("#0b0e13")+`<rect x="${cx-80}" y="${cy-48}" width="160" height="96" rx="3" fill="#0f2240" stroke="#7aa6dc"/>
+    <text x="${cx-68}" y="${cy-30}" font-size="10" fill="#a8c4e6" font-family="system-ui" letter-spacing="1">INGANG</text>
+    ${["HDMI 1","HDMI 2","DisplayPort"].map((t,i)=>`<rect x="${cx-72}" y="${cy-20+i*20}" width="144" height="17" rx="2" fill="${i===0?"#2d5a9b":"transparent"}"/><text x="${cx-64}" y="${cy-8+i*20}" font-size="11" fill="#f1f5fb" font-family="system-ui">${t}</text>`).join("")}`;
+  case"menub":return bg("#030405")+desk(.09)+`<rect x="${cx-80}" y="${cy-28}" width="160" height="56" rx="3" fill="#0f2240" stroke="#7aa6dc"/>
+    <text x="${cx-68}" y="${cy-10}" font-size="10" fill="#a8c4e6" font-family="system-ui" letter-spacing="1">HELDERHEID</text><rect x="${cx-68}" y="${cy+2}" width="136" height="6" rx="3" fill="#2a3b55"/><rect x="${cx-68}" y="${cy+2}" width="108" height="6" rx="3" fill="#7aa6dc"/>`;
+  case"bios":return bg("#000")+`<rect x="${cx-46}" y="${cy-30}" width="92" height="40" rx="3" fill="none" stroke="#e8e8e8" stroke-width="2"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="16" font-weight="700" fill="#e8e8e8" font-family="system-ui" letter-spacing="2">BIOS</text>
+    <text x="${cx}" y="${Y+H-14}" text-anchor="middle" font-size="8" fill="#9a9a9a" font-family="monospace">DEL: setup    F12: opstartmenu</text>`;
+  case"loading":return bg("#000")+`<g class="spin">${[0,1,2,3,4,5].map(i=>{const a=i*Math.PI/3;return `<circle cx="${cx+14*Math.cos(a)}" cy="${cy+14*Math.sin(a)}" r="${1.5+i*.35}" fill="#dfe6ee"/>`}).join("")}</g>`;
+  case"login":return `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#wall2)"/>`+bg("rgba(0,0,0,.35)")+`<circle cx="${cx}" cy="${cy-14}" r="16" fill="#dfe6ee"/><text x="${cx}" y="${cy+22}" text-anchor="middle" font-size="11" fill="#fff" font-family="system-ui">Aanmelden…</text>`;
+  case"white":return bg("#f4f6f8");
+  case"safe":return bg("#101010")+`<rect x="${cx-60}" y="${cy-30}" width="120" height="60" fill="#c8c8c8"/><rect x="${cx-60}" y="${cy-30}" width="120" height="10" fill="#9a9a9a"/>
+    ${[[X+6,Y+12,"start"],[X+W-6,Y+12,"end"],[X+6,Y+H-6,"start"],[X+W-6,Y+H-6,"end"]].map(([x,y,a])=>`<text x="${x}" y="${y}" text-anchor="${a}" font-size="9" fill="#eee" font-family="system-ui">Veilige modus</text>`).join("")}`;
+  case"lowres":return `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#wall2)"/><text x="${cx}" y="${cy}" text-anchor="middle" font-size="16" fill="#fff" font-family="system-ui" opacity=".85">640 × 480</text>`;
+  case"desktop":return desk(1);
+  case"winp":return desk(.6)+`<rect x="${X+W-96}" y="${Y}" width="96" height="${H}" fill="#1c2430"/>${["Alleen pc-scherm","Dupliceren","Uitbreiden","Alleen tweede scherm"].map((t,i)=>`<rect x="${X+W-90}" y="${Y+10+i*32}" width="84" height="26" rx="2" fill="${i===0?"#2d5a9b":"#2a3442"}"/><text x="${X+W-84}" y="${Y+27+i*32}" font-size="8" fill="#e8eef6" font-family="system-ui">${t}</text>`).join("")}`;
+  case"taskmgr":return bg("#020304")+`<rect x="${X+40}" y="${Y+24}" width="${W-80}" height="${H-48}" rx="3" fill="#f6f7f9"/><rect x="${X+40}" y="${Y+24}" width="${W-80}" height="14" fill="#dfe5ec"/>
+    <text x="${X+48}" y="${Y+34}" font-size="8" font-weight="600" fill="#273140" font-family="system-ui">Taakbeheer · Nieuwe taak uitvoeren</text><rect x="${X+52}" y="${Y+56}" width="${W-104}" height="14" fill="#fff" stroke="#9aa6b4"/>
+    <text x="${X+56}" y="${Y+66}" font-size="9" fill="#111" font-family="monospace">explorer.exe</text>`;
+  case"energy":return wnd("Instellingen › Systeem › Energie",[["Scherm uitschakelen na",null,1],["1 minuut  →  15 minuten","#1d5cc0"],["Slaapstand na: 30 minuten"]]);
+  case"devmgr-warn":return wnd("Apparaatbeheer",[["Beeldschermadapters",null,1],["⚠  NVIDIA GeForce (code 43)","#b86a0e",1],["Dit apparaat werkt niet goed."]]);
+  case"devmgr-conflict":return wnd("Apparaatbeheer",[["Beeldschermadapters",null,1],["AMD Radeon RX","#273140"],["⚠  NVIDIA GeForce (oude driver)","#b86a0e",1]]);
+  case"devmgr-ok":return wnd("Apparaatbeheer",[["Beeldschermadapters",null,1],["Grafische kaart  ·  werkt correct","#2a7d52"]]);
+  case"temp-hot":return wnd("HWiNFO · sensoren",[["GPU-temperatuur",null,1],["98 °C  ▲ kritiek","#c0392b",1],["Ventilator GPU: 0 rpm"]]);
+  case"temp-ok":return wnd("HWiNFO · sensoren",[["GPU-temperatuur",null,1],["68 °C  normaal","#2a7d52",1],["Ventilator GPU: 1450 rpm"]]);
+  case"progress":return wnd("Bezig…",[["Driver wordt geïnstalleerd",null,1],["██████████░░░░  70 %","#1d5cc0"]]);
+  }
+  return bg("#000");
+}
+function sceneSVG(V,F){
+  const A=F.a,lap=A.setup==="dock";
+  let scr=V.fixed&&!V.scrOverride?"desktop":V.scr;
+  if(!V.fixed&&V.flash&&F.id==="backlight")scr="faint";
+  const led=V.fixed?"white":V.led;
+  const ledC={off:"#1a1c1f",orange:"#ff9d2e",white:"#eaf3ff"}[led]||"#3a3f45";
+  const hl=k=>V.hl===k?" pulse":"";
+  const pcRun=A.pc!=="off"&&A.pc!=="sleep"||V.fixed;
+  const dbgLed=(lbl,i)=>{const on=V.open&&A.dbg===lbl&&!V.fixed;return `<rect x="597" y="${104+i*18}" width="7" height="7" rx="1.5" fill="${on?"#ff8a1f":"#3b2a1c"}" ${on?'filter="url(#glow)"':""}/><text x="593" y="${111+i*18}" text-anchor="end" font-size="6.5" fill="#9fb3a6" font-family="monospace">${lbl}</text>`};
+  const gpuLoose=F.id==="gpu_power"&&!V.fixed,gpuTilt=F.id==="gpu_seat"&&!V.fixed,dust=F.id==="overheat"&&!V.fixed,ramTilt=F.id==="ram"&&!V.fixed;
+  const vidEnd=lap?[402,248]:(F.id==="mobo_port"&&!V.fixed)?[452,128]:[452,206];
+  const adapter=A.setup==="adapter"&&!V.fixed;
+  const monCable=F.id==="mon_power"&&!V.fixed?"M332 214 C 390 262, 260 318, 168 318":"M332 214 C 390 262, 230 318, 118 306";
+  const watt=F.id==="psu_weak"?"450 W":"750 W";
+  return `<svg viewBox="0 0 640 340" role="img" aria-label="Werkplek met monitor en computer">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34404d"/><stop offset="1" stop-color="#232b34"/></linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6647"/><stop offset="1" stop-color="#5c4230"/></linearGradient>
+    <linearGradient id="wall2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e4f8f"/><stop offset=".6" stop-color="#3d86c6"/><stop offset="1" stop-color="#7cc0e8"/></linearGradient>
+    <linearGradient id="beam" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fff6d8" stop-opacity=".55"/><stop offset="1" stop-color="#fff6d8" stop-opacity=".05"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b3540" stop-opacity=".9"/><stop offset="1" stop-color="#151a20" stop-opacity=".95"/></linearGradient>
+    <filter id="glow" x="-2" y="-2" width="5" height="5"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <clipPath id="scr"><rect x="82" y="52" width="276" height="156" rx="2"/></clipPath>
+  </defs>
+  <rect width="640" height="262" fill="url(#wall)"/>
+  <rect x="0" y="252" width="640" height="88" fill="url(#wood)"/><rect x="0" y="252" width="640" height="6" fill="#a07a56"/>
+  ${[60,140,500,580].map(x=>`<line x1="${x}" y1="262" x2="${x+30}" y2="340" stroke="#4e3828" stroke-width="1" opacity=".5"/>`).join("")}
+  <g class="${hl("power")}"><path d="${monCable}" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round"/></g>
+  ${lap?"":`<g class="${hl("pcpower")}"><path d="M470 262 C 470 300, 200 322, 96 306" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round"/></g>`}
+  <rect x="24" y="298" width="128" height="18" rx="4" fill="#e9e7e1"/><rect x="132" y="302" width="12" height="10" rx="2" fill="#d23a2c"/>
+  ${[0,1,2,3].map(i=>`<circle cx="${42+i*24}" cy="307" r="5.5" fill="#cfccc4"/>`).join("")}
+  <g class="${hl("video")}"><path d="M300 214 C 330 300, ${vidEnd[0]-40} 300, ${vidEnd[0]} ${vidEnd[1]}" fill="none" stroke="#1d2a3a" stroke-width="5" stroke-linecap="round"/>
+    <rect x="${vidEnd[0]-10}" y="${vidEnd[1]-5}" width="12" height="10" rx="2" fill="#2c3d52"/>
+    ${adapter?`<rect x="${vidEnd[0]-26}" y="${vidEnd[1]-7}" width="18" height="14" rx="2" fill="#e8e8e8" stroke="#888"/><text x="${vidEnd[0]-17}" y="${vidEnd[1]+3}" text-anchor="middle" font-size="6" fill="#333" font-family="monospace">DP›H</text>`:""}</g>
+  <rect x="205" y="224" width="30" height="30" fill="#24282d"/><rect x="146" y="250" width="148" height="8" rx="4" fill="#2a2f35"/>
+  <rect x="70" y="40" width="300" height="186" rx="10" fill="#14171b" stroke="#2c3239" stroke-width="2"/>
+  <g clip-path="url(#scr)" class="${hl("screen")}">${scrSVG(scr)}</g>
+  <g class="${hl("led")}"><circle cx="352" cy="217" r="4" fill="${ledC}" class="${led==="orange"?"blink":""}" ${led&&led!=="off"?'filter="url(#glow)"':""}/></g>
+  ${V.note?`<text x="390" y="90" font-size="22" fill="#cfe3ff" class="float">♪</text>`:""}
+  ${lap?`
+   <g class="${hl("tower")}"><rect x="386" y="240" width="44" height="14" rx="3" fill="#2a2f35" stroke="#454c55"/><circle cx="424" cy="247" r="2" fill="#59c3ff"/>
+    <path d="M430 248 C 450 250, 455 250, 470 246" fill="none" stroke="#1d2a3a" stroke-width="4"/>
+    <polygon points="452,252 620,252 632,262 440,262" fill="#9aa3ad"/><rect x="470" y="150" width="140" height="100" rx="5" fill="#1b1f24" stroke="#454c55" stroke-width="2"/>
+    <g transform="translate(476 156) scale(.465 .565)"><svg x="0" y="0" width="276" height="156" viewBox="82 52 276 156" overflow="hidden">${scrSVG("desktop")}</svg></g></g>`:`
+  <g class="${hl("tower")}">
+    <rect x="440" y="60" width="176" height="202" rx="6" fill="#1b1f24" stroke="#353c45" stroke-width="2"/>
+    <rect x="452" y="72" width="152" height="178" rx="3" fill="${V.open?"#11161b":"url(#glass)"}"/>
+    <g opacity="${V.open?1:.22}">
+      <rect x="466" y="80" width="126" height="122" rx="2" fill="#1d3a30"/>
+      <rect x="452" y="96" width="14" height="80" fill="#5a6370"/>
+      <rect x="506" y="96" width="38" height="38" rx="3" fill="#2e3742"/><g class="${pcRun?"fan":""}"><circle cx="525" cy="115" r="15" fill="#20262d" stroke="#56606c"/>${[0,1,2,3,4].map(i=>`<path d="M525 115 L ${525+13*Math.cos(i*1.257)} ${115+13*Math.sin(i*1.257)}" stroke="#6b7682" stroke-width="3"/>`).join("")}</g>
+      <g class="${hl("ram")}">${[0,1].map(i=>`<rect x="${556+i*9}" y="88" width="6" height="52" rx="1" fill="#2f4f8f" ${i===1&&ramTilt?'transform="rotate(10 562 140)"':""}/>`).join("")}</g>
+      <g class="${hl("cmos")}"><circle cx="490" cy="150" r="7" fill="#c9ced6" stroke="#8b939e"/><text x="490" y="153" text-anchor="middle" font-size="5" fill="#333" font-family="monospace">CR</text></g>
+      <g class="${hl("gpu")}" ${gpuTilt?'transform="rotate(-6 460 176)"':""}><rect x="458" y="168" width="126" height="26" rx="3" fill="#2a3038" stroke="#4a5562"/>
+        ${[0,1].map(i=>`<g class="${pcRun&&!(F.id==="overheat"&&i===1&&!V.fixed)?"fan":""}"><circle cx="${490+i*44}" cy="181" r="10" fill="#1a1f25" stroke="#56606c"/><path d="M${490+i*44-8} 181 h16 M${490+i*44} 173 v16" stroke="#56606c" stroke-width="2"/></g>`).join("")}
+        ${dust?[[484,177],[494,186],[530,175],[540,184],[522,188],[498,174]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6" fill="#a58a63" opacity=".9"/>`).join(""):""}
+        <rect x="562" y="162" width="16" height="7" rx="1" fill="#111"/>
+        <path d="${gpuLoose?"M570 162 C 572 146, 600 156, 600 214":"M570 162 C 570 146, 596 146, 600 136"}" fill="none" stroke="#e0b032" stroke-width="3"/></g>
+      <g class="${hl("psu")}"><rect x="458" y="208" width="140" height="36" rx="2" fill="#2b2f36" stroke="#4a5562"/>
+        <rect x="530" y="214" width="60" height="24" rx="2" fill="#e9e9e2"/><text x="560" y="224" text-anchor="middle" font-size="6" fill="#333" font-family="monospace">VOEDING</text>
+        <text x="560" y="234" text-anchor="middle" font-size="8" font-weight="700" fill="${F.id==="psu_weak"?"#c0392b":"#2a7d52"}" font-family="monospace">${watt}</text></g>
+      <g class="${hl("dbg")}">${["CPU","DRAM","VGA","BOOT"].map(dbgLed).join("")}</g>
+    </g>
+    ${!V.open?`<text x="528" y="166" text-anchor="middle" font-size="9" fill="#7d8996" font-family="monospace" letter-spacing="1">ZIJPANEEL DICHT</text>`:""}
+    <circle cx="606" cy="68" r="3" fill="${A.pc==="off"&&!V.fixed?"#2a3038":"#59c3ff"}" class="${A.pc==="sleep"&&!V.fixed?"breath":""}" ${A.pc!=="off"||V.fixed?'filter="url(#glow)"':""}/>
+    ${A.pc==="loud"&&!V.fixed?`<g stroke="#cfe3ff" stroke-width="2" fill="none" opacity=".7" class="float"><path d="M624 110 q8 10 0 20"/><path d="M630 104 q12 16 0 32"/></g>`:""}
+  </g>`}
+  ${V.flash?`<polygon points="20,340 60,340 360,60 200,210" fill="url(#beam)"/><rect x="8" y="318" width="44" height="16" rx="5" fill="#3a3f46" transform="rotate(-40 30 326)"/>`:""}
+  </svg>`;
+}
+/* ================= TRAININGSRUIMTE ================= */
+const PCOL={cav:"#1b2128",shell:"#9aa4ae",tongue:"#d3d9df",vga:"#2f63c4",vgaD:"#1c3d7a",dvi:"#f1efe8",dviD:"#7d7a70",pin:"#2a2a2a",usb3:"#2e6fd8",gold:"#c9a548"};
+function shape(t){
+  const PC=PCOL,Sx=`stroke="${PC.shell}" stroke-width="3"`;
+  switch(t){
+  case"hdmi":return `<polygon points="10,16 110,16 110,32 98,44 22,44 10,32" fill="${PC.cav}" ${Sx}/><rect x="24" y="24" width="72" height="8" fill="${PC.tongue}"/>`;
+  case"dp":return `<polygon points="12,16 108,16 108,34 98,44 12,44" fill="${PC.cav}" ${Sx}/><rect x="22" y="24" width="72" height="8" fill="${PC.tongue}"/>`;
+  case"usbc":return `<rect x="28" y="20" width="64" height="20" rx="10" fill="${PC.cav}" ${Sx}/><rect x="40" y="27" width="40" height="6" rx="2" fill="${PC.tongue}"/>`;
+  case"usba":return `<rect x="24" y="17" width="72" height="26" fill="${PC.cav}" ${Sx}/><rect x="28" y="21" width="64" height="9" fill="${PC.usb3}"/>`;
+  case"vga":{let p=`<circle cx="9" cy="30" r="5" fill="${PC.shell}"/><circle cx="111" cy="30" r="5" fill="${PC.shell}"/><polygon points="20,13 100,13 93,47 27,47" fill="${PC.vga}" stroke="${PC.vgaD}" stroke-width="3" stroke-linejoin="round"/>`;
+    [[22,36,12],[30,39,10.5],[38,42,9]].forEach(([y,x0,dx])=>{for(let i=0;i<5;i++)p+=`<circle cx="${x0+i*dx}" cy="${y}" r="2.3" fill="${PC.vgaD}"/>`});return p;}
+  case"dvid":case"dvii":{let p=`<polygon points="6,14 114,14 114,40 106,48 14,48 6,40" fill="${PC.dvi}" stroke="${PC.dviD}" stroke-width="2.5"/>`;
+    for(let r=0;r<3;r++)for(let i=0;i<8;i++)p+=`<rect x="${14+i*8}" y="${21+r*8}" width="4" height="4" fill="${PC.pin}"/>`;
+    p+=`<rect x="88" y="29" width="20" height="3" fill="${PC.pin}"/>`;
+    if(t==="dvii")[[91,21],[103,21],[91,37],[103,37]].forEach(([x,y])=>p+=`<rect x="${x}" y="${y}" width="4" height="4" fill="${PC.pin}"/>`);return p;}
+  case"rj45":{let p=`<polygon points="34,8 86,8 86,42 72,42 72,52 48,52 48,42 34,42" fill="${PC.cav}" ${Sx}/>`;for(let i=0;i<8;i++)p+=`<rect x="${39+i*5.5}" y="11" width="3" height="10" fill="${PC.gold}"/>`;return p;}
+  case"aud":return `<circle cx="60" cy="30" r="16" fill="#4c9f50" stroke="#2f6b33" stroke-width="2"/><circle cx="60" cy="30" r="6" fill="${PC.cav}"/>`;
+  case"audp":return `<circle cx="60" cy="30" r="16" fill="#e07aa6" stroke="#9c4a6e" stroke-width="2"/><circle cx="60" cy="30" r="6" fill="${PC.cav}"/>`;
+  case"audb":return `<circle cx="60" cy="30" r="16" fill="#4f8fd6" stroke="#2c5c94" stroke-width="2"/><circle cx="60" cy="30" r="6" fill="${PC.cav}"/>`;
+  case"c14":return `<polygon points="36,8 84,8 84,38 74,50 46,50 36,38" fill="${PC.cav}" ${Sx}/><rect x="45" y="22" width="5" height="12" fill="${PC.shell}"/><rect x="58" y="16" width="5" height="12" fill="${PC.shell}"/><rect x="70" y="22" width="5" height="12" fill="${PC.shell}"/>`;
+  case"sw":return `<rect x="38" y="12" width="44" height="36" rx="3" fill="${PC.cav}" ${Sx}/><rect x="44" y="16" width="32" height="28" fill="#3a434d"/><text x="50" y="35" fill="#e6e6e6" font-size="14" font-family="monospace">I O</text>`;
+  }
+}
+const PORTS={
+ hdmi:["HDMI","Digitaal beeld én geluid. Op tv's, monitoren en beamers. Herken je hem aan de twee schuine hoeken onderaan."],
+ dp:["DisplayPort","Digitaal beeld én geluid, de standaard op grafische kaarten. Eén schuine hoek; de stekker heeft een klemmetje."],
+ usbc:["USB-C","Ovaal en symmetrisch. Geeft alleen beeld als de poort DisplayPort Alt Mode of Thunderbolt ondersteunt."],
+ vga:["VGA (D-sub)","Analoog en oud. Vaak blauw, 15 gaatjes in drie rijen, met twee schroeven. Beeld wordt wazig bij hoge resolutie."],
+ dvid:["DVI-D","Digitaal, zonder geluid. Wit, met een raster pinnen en een plat pootje. Geen extra pinnen rond dat pootje."],
+ dvii:["DVI-I","Digitaal én analoog: vier extra gaatjes rond het platte pootje. Kan met een eenvoudige adapter naar VGA."],
+ usba:["USB-A","Voor toetsenbord, muis en sticks. Geeft geen beeld (behalve met een speciale DisplayLink-adapter)."],
+ rj45:["Netwerk (RJ45)","Voor de netwerkkabel. Breder dan een telefoonstekker, met een klemmetje onderaan. Geen beeld."],
+ aud:["Audio 3,5 mm","Geluid: groen voor koptelefoon of luidsprekers, roze voor microfoon. Geen beeld."]
+};
+const PNAME={"m-usb1":"een USB-A-poort op het moederbord","m-usb2":"een USB-A-poort op het moederbord","m-hdmi":"de HDMI-poort van het moederbord","m-dp":"de DisplayPort van het moederbord","m-rj45":"de netwerkpoort (RJ45)",
+ "m-aud-g":"de groene audio-uitgang","m-aud-p":"de roze microfooningang","m-aud-b":"de blauwe line-in","g-dp1":"een DisplayPort van de grafische kaart","g-dp2":"een DisplayPort van de grafische kaart","g-dp3":"een DisplayPort van de grafische kaart",
+ "g-hdmi":"de HDMI-poort van de grafische kaart","psu-power":"de stroomaansluiting van de voeding","psu-switch":"de aan/uit-schakelaar van de voeding"};
+const PLUG=[
+ {id:"p1",gpu:true,q:"Deze pc heeft een grafische kaart. Sluit de monitor aan met een HDMI-kabel.",ok:["g-hdmi"],e:"Met een grafische kaart gebruik je altijd de poorten van de kaart. De HDMI van het moederbord geeft dan meestal geen beeld."},
+ {id:"p2",gpu:true,q:"Deze pc heeft een grafische kaart. Sluit de monitor aan met een DisplayPort-kabel.",ok:["g-dp1","g-dp2","g-dp3"],e:"Elk van de drie DisplayPorts op de kaart werkt. De DisplayPort van het moederbord blijft uitgeschakeld."},
+ {id:"p3",gpu:false,q:"De grafische kaart is weg voor herstelling. Sluit de monitor tijdelijk aan met HDMI.",ok:["m-hdmi"],e:"Zonder grafische kaart gebruikt de pc de ingebouwde graphics van de processor, via de poorten op het moederbord."},
+ {id:"p4",gpu:true,q:"Sluit de netwerkkabel aan.",ok:["m-rj45"],e:"De netwerkpoort zit op het moederbord, met een klemmetje onderaan."},
+ {id:"p5",gpu:true,q:"Sluit de stroomkabel van de pc aan.",ok:["psu-power"],e:"De stroomkabel gaat in de voeding, onderaan de kast."},
+ {id:"p6",gpu:true,q:"De pc reageert niet op de aan/uit-knop. Wat controleer je achteraan eerst?",ok:["psu-switch"],e:"Staat de schakelaar van de voeding op O, dan krijgt de pc geen stroom, ook al zit de kabel erin."},
+ {id:"p7",gpu:true,q:"Sluit een koptelefoon met een 3,5 mm-stekker aan.",ok:["m-aud-g"],e:"Groen is de uitgang voor koptelefoon of luidsprekers. Roze is voor een microfoon."}
+];
+const PANEL=[["m-usb1","usba",40,36,.55],["m-usb2","usba",40,68,.55],["m-hdmi","hdmi",40,100,.55],["m-dp","dp",40,132,.55],["m-rj45","rj45",40,162,.55],
+ ["m-aud-g","aud",28,200,.35],["m-aud-p","audp",56,200,.35],["m-aud-b","audb",84,200,.35],["psu-power","c14",40,352,.5],["psu-switch","sw",110,352,.5]];
+const PANEL_GPU=[["g-dp1","dp",40,264,.5],["g-dp2","dp",110,264,.5],["g-dp3","dp",180,264,.5],["g-hdmi","hdmi",250,264,.5]];
+function panelSVG(gpu,cableAt,adapter){
+  const all=PANEL.concat(gpu?PANEL_GPU:[]);
+  const P=([id,t,x,y,s])=>`<g class="hit" data-p="${id}" tabindex="0" role="button" aria-label="${PNAME[id]}"><rect class="hl" x="${x-3}" y="${y-3}" width="${120*s+6}" height="${60*s+6}" rx="4"/><g transform="translate(${x},${y}) scale(${s})">${shape(t)}</g></g>`;
+  let s=`<svg viewBox="0 0 380 400" role="img" aria-label="Achterkant van een pc"><rect class="case" x="10" y="10" width="360" height="380" rx="8"/>
+  <text class="lbl" x="30" y="24">MOEDERBORD</text><rect class="plate" x="26" y="30" width="96" height="206" rx="2"/>`;
+  s+=`<circle cx="250" cy="120" r="70" fill="none" stroke="var(--line)" stroke-width="2"/><circle cx="250" cy="120" r="50" fill="none" stroke="var(--line)"/><circle cx="250" cy="120" r="30" fill="none" stroke="var(--line)"/><circle cx="250" cy="120" r="8" fill="var(--line)"/>`;
+  s+=`<text class="lbl" x="30" y="252">UITBREIDINGSSLEUVEN${gpu?" · GRAFISCHE KAART":""}</text>`;
+  if(gpu)s+=`<rect class="plate" x="26" y="258" width="330" height="44" rx="2"/>`;
+  else for(let i=0;i<2;i++){s+=`<rect class="plate" x="26" y="${258+i*22}" width="330" height="18" rx="2"/>`;for(let j=0;j<12;j++)s+=`<rect x="${60+j*22}" y="${263+i*22}" width="12" height="8" rx="2" fill="var(--line)"/>`}
+  for(let i=0;i<2;i++)s+=`<rect class="plate" x="26" y="${306+i*14}" width="330" height="11" rx="2"/>`;
+  s+=`<text class="lbl" x="30" y="346">VOEDING</text><rect class="plate" x="26" y="350" width="330" height="34" rx="2"/>`;
+  for(let j=0;j<8;j++)s+=`<circle cx="${210+j*17}" cy="367" r="5" fill="none" stroke="var(--line)"/>`;
+  s+=all.map(P).join("");
+  const c=all.find(p=>p[0]===cableAt);
+  if(c){const [,,x,y,sc]=c,cx=x+60*sc,cy=y+30*sc;
+    s+=`<g class="cablemark" pointer-events="none"><path d="M${cx} ${cy} C ${cx+40} ${cy-10}, 330 ${cy-30}, 372 ${cy-40}" fill="none" stroke="#1d2a3a" stroke-width="7" stroke-linecap="round"/>
+      <rect x="${cx-10}" y="${cy-8}" width="${adapter?34:24}" height="16" rx="3" fill="${adapter?"#e8e8e8":"#2c3d52"}" stroke="#0e1620"/>${adapter?`<text x="${cx+7}" y="${cy+4}" text-anchor="middle" font-size="7" font-family="monospace" fill="#333">DP›H</text>`:""}
+      <text x="${Math.min(cx+46,330)}" y="${cy-22}" font-size="10" font-weight="700" fill="var(--accent)" font-family="system-ui">beeldkabel</text></g>`}
+  return s+`</svg>`;
+}
+const CASES=[
+ {id:"k1",s:"Gisteren heeft een collega een nieuwe grafische kaart geplaatst. De pc draait, de ventilatoren zijn hoorbaar, maar het monitorlampje knippert oranje. De beeldkabel zit nog in dezelfde poort als vroeger, naast de USB-poorten.",h:"Waar zitten de poorten naast de USB-aansluitingen?",o:["De kabel zit in het moederbord in plaats van in de grafische kaart","Het werkgeheugen is defect","De monitor is stuk","De Windows-driver is verouderd"],e:"Met een aparte grafische kaart worden de beeldpoorten van het moederbord meestal uitgeschakeld. Verplaats de kabel naar de kaart."},
+ {id:"k2",s:"Je ziet het logo van de fabrikant en het laadrondje van Windows. Daarna wordt het scherm zwart en de monitor meldt 'Geen signaal'. Gisteravond heeft Windows automatisch updates geïnstalleerd.",h:"Het BIOS geeft wel beeld. Wat verandert er pas wanneer Windows laadt?",o:["Een probleem met de grafische driver","De beeldkabel is los","De voeding is te zwak","De CMOS-batterij is leeg"],e:"Beeld tijdens het opstarten betekent dat hardware en kabel werken. Start in veilige modus en draai de driver of de update terug."},
+ {id:"k3",s:"Een gamer zet zijn monitor in Windows op 165 Hz. Sindsdien toont de monitor 'Out of range' en blijft het beeld weg.",h:"Wat staat er letterlijk in de melding?",o:["De pc stuurt een frequentie die de monitor of kabel niet aankan","De grafische kaart is oververhit","De monitor staat op de verkeerde ingang","Explorer.exe is gecrasht"],e:"Wacht 15 seconden zodat Windows terugzet, of start met lage resolutie. Controleer of kabel en poort 165 Hz ondersteunen."},
+ {id:"k4",s:"Na het uitblazen van stof uit de kast start de pc, maar er komt geen beeld. Op het moederbord brandt een oranje lampje met het label VGA.",h:"Het lampje wijst een onderdeel aan. Wat kan er bij schoonmaken losgeraakt zijn?",o:["Grafische kaart zit los of de stroomkabel ervan is losgeraakt","De monitor staat op HDMI 2","Er is een virus","De resolutie is te hoog"],e:"Het VGA-lampje betekent dat het moederbord geen werkende grafische kaart vindt. Controleer de PCIe-sleuf en de extra stroomkabels."},
+ {id:"k5",s:"Iemand heeft extra geheugen bijgeplaatst. De pc start, de ventilatoren draaien op volle snelheid, er komt geen beeld en het DRAM-lampje op het moederbord blijft branden.",h:"Welk onderdeel werd net aangeraakt?",o:["Het geheugen zit niet goed of is niet compatibel","De grafische driver is corrupt","De DisplayPort-kabel is te lang","Snel opstarten staat aan"],e:"Zonder geslaagde geheugentest is er geen POST en dus nooit beeld. Plaats de reepjes opnieuw in de juiste sleuven of test met één reepje."},
+ {id:"k6",s:"Een laptop start normaal en je hoort het Windows-geluid. Het scherm lijkt zwart, maar met een zaklamp schuin op het scherm zie je vaag de iconen van het bureaublad.",h:"Het beeld is er dus wel. Wat ontbreekt er?",o:["De achtergrondverlichting van het scherm","De grafische driver","De lader","Het BIOS"],e:"Het paneel krijgt signaal, maar de verlichting werkt niet. Probeer eerst de helderheid met de Fn-toetsen, test daarna met een externe monitor."},
+ {id:"k7",s:"Na het inloggen blijft het scherm zwart, maar je kan de muiscursor wel bewegen. Geen taakbalk, geen iconen.",h:"Welk Windows-proces tekent de taakbalk en het bureaublad?",o:["De verkenner (explorer.exe) is niet gestart","De beeldkabel is defect","De monitor is te donker ingesteld","De grafische kaart krijgt te weinig stroom"],e:"Een zichtbare cursor bewijst dat beeld en driver werken. Open Taakbeheer met Ctrl + Shift + Esc en start explorer.exe."},
+ {id:"k8",s:"De pc draait. Het lampje van de monitor is uit, en als je op de aan/uit-knop van de monitor drukt gebeurt er niets.",h:"Wat heeft de monitor nodig om zijn lampje te laten branden, los van de pc?",o:["De monitor krijgt geen stroom","De kabel zit in de verkeerde poort","De driver moet herstart worden","De resolutie is te hoog"],e:"Zonder lampje is het een stroomprobleem van de monitor zelf: stroomkabel, adapter, stekkerdoos of de monitor is defect."},
+ {id:"k9",s:"Een leerkracht werkte met de pc en een projector. Na het loskoppelen van de projector blijft het eigen scherm zwart. De pc draait gewoon.",h:"Welke sneltoets kiest waar Windows het beeld naartoe stuurt?",o:["Windows staat op 'Alleen tweede scherm' (Win + P)","De grafische kaart is defect","De monitor is oververhit","Het geheugen zit los"],e:"Druk Win + P en kies 'Alleen pc-scherm' of 'Dupliceren'. Windows stuurt het beeld nog naar de projector."},
+ {id:"k10",s:"Een pc wordt via een goedkoop verloopstuk van DisplayPort naar HDMI op een oude tv aangesloten. Geen beeld. Met een gewone HDMI-kabel uit een andere pc werkt de tv wel.",h:"Wat is het enige verschil tussen de werkende en de niet-werkende opstelling?",o:["Het passieve verloopstuk werkt niet met deze combinatie","De tv is defect","Windows moet opnieuw geïnstalleerd worden","De CMOS moet gereset worden"],e:"Niet elke DP-poort ondersteunt passieve adapters, en sommige adapters halen de resolutie niet. Gebruik een actieve adapter of een rechtstreekse HDMI-poort."},
+ {id:"k11",s:"In het computerlokaal brandt het monitorlampje continu wit, maar het scherm toont 'Geen signaal – HDMI 1'. De kabel van de pc zit in de DisplayPort-ingang van de monitor.",h:"Lees de melding nog eens: naar welke ingang kijkt de monitor?",o:["De monitor staat op de verkeerde ingang","De pc staat in slaapstand","De kabel is gebroken","De grafische kaart is te zwak"],e:"Kies in het menu van de monitor de ingang DisplayPort, of zet automatische bronselectie aan."},
+ {id:"k12",s:"Een nieuwe, krachtige grafische kaart in een oude pc met een voeding van 450 W. Op het bureaublad gaat alles goed, maar tijdens games wordt het scherm zwart en herstart de pc soms.",h:"Wat verandert er tijdens een game ten opzichte van het bureaublad?",o:["De voeding is te zwak voor de kaart onder belasting","De HDMI-kabel is te kort","De monitor staat op de verkeerde ingang","Explorer.exe crasht"],e:"Onder belasting vraagt de kaart veel meer vermogen. Een te zwakke voeding valt dan weg. Vergelijk met het aanbevolen vermogen van de fabrikant."},
+ {id:"k13",s:"Iemand stapt over van een NVIDIA- naar een AMD-kaart zonder iets te verwijderen. In het BIOS is er beeld, in Windows flikkert het scherm en valt het steeds weg.",h:"Wat staat er nog op de schijf van de vorige kaart?",o:["Oude driverresten conflicteren: schone installatie met DDU","De nieuwe kaart is defect","De monitor ondersteunt AMD niet","De CMOS-batterij is leeg"],e:"Verwijder in veilige modus alle resten met DDU en installeer daarna de AMD-driver."},
+ {id:"k14",s:"Na het aanpassen van instellingen in het BIOS (overklokken van geheugen en processor) start de pc, maar er verschijnt zelfs geen logo meer.",h:"Hoe zet je het BIOS terug naar fabrieksinstellingen zonder beeld?",o:["CMOS resetten met de jumper of het batterijtje","Win + Ctrl + Shift + B drukken","Een andere HDMI-kabel kopen","Snel opstarten uitzetten"],e:"Een CMOS-reset zet alle BIOS-instellingen terug naar standaard, ook als je geen beeld hebt om in het BIOS te komen."}
+];
+const TRAIN=[
+ {id:"rec",t:"Poorten herkennen",d:"Je ziet een aansluiting. Welke is het? 5 XP per juist antwoord bij de eerste poging.",prog:()=>`${P.recN} juist herkend`},
+ {id:"plug",t:"Kabel aansluiten",d:"De achterkant van een pc. Klik op de juiste aansluiting. 10 XP per opdracht juist bij de eerste poging.",prog:()=>`${Object.keys(P.plugOk).length}/${PLUG.length} opdrachten juist`},
+ {id:"tix",t:"Snelle tickets",d:"Lees de symptomen en kies de oorzaak. 15 XP bij de eerste poging, een hint kost 5 XP.",prog:()=>`${Object.keys(P.solved).length}/${CASES.length} opgelost · beste reeks ${P.bestStreak}`}
+];
+function trainHTML(){
+  return `<section><div class="sec-h"><h2>Trainingsruimte</h2><span class="muted">Korte oefeningen tussen je diensten door</span></div>
+   <div class="tgrid">${TRAIN.map(t=>`<article class="tcard"><span class="dc-day">Training</span><h3>${t.t}</h3><p>${t.d}</p><small class="dc-s">${t.prog()}</small><button class="btn primary" data-train="${t.id}">Oefenen</button></article>`).join("")}</div></section>`;
+}
+let TR=null;
+function renderTrain(kind){
+  VIEW="train";clearTimeout(idleT);clearInterval(waitT);
+  const t=TRAIN.find(x=>x.id===kind);
+  $("app").innerHTML=`<section class="trainv"><div class="wiz-actions"><button class="btn" id="tback">← Terug naar de planning</button></div>
+    <span class="eyebrow">Trainingsruimte</span><h2>${t.t}</h2><p class="muted">${t.d}</p><div class="tgame" id="tgame" aria-live="polite"></div></section>`;
+  $("tback").onclick=renderHome;
+  TR=null;({rec:newRec,plug:newPlug,tix:newCase})[kind]();
+  window.scrollTo({top:0});
+}
+/* herkennen */
+function newRec(){const keys=Object.keys(PORTS);let k;do{k=pick(keys)}while(TR&&k===TR.k);TR={k,opts:shuffle([k,...shuffle(keys.filter(x=>x!==k)).slice(0,3)]),tries:0,picked:{},done:false};renderRec()}
+function renderRec(){
+  const el=$("tgame");
+  el.innerHTML=`<div class="game-top"><span>Juist herkend <b>${P.recN}</b></span></div>
+   <div class="portview"><svg viewBox="0 0 120 60" role="img" aria-label="Afbeelding van een aansluiting">${shape(TR.k)}</svg></div>
+   <p class="qq">Welke aansluiting is dit?</p><div class="opts">${TR.opts.map(o=>{let c="";if(TR.picked[o])c=o===TR.k?" right":" wrong";if(TR.done&&o===TR.k)c=" right";
+     return `<button class="opt${c}" data-o="${o}" ${TR.done||TR.picked[o]?"disabled":""}>${PORTS[o][0]}</button>`}).join("")}</div>
+   ${TR.done?`<div class="fb"><b>${PORTS[TR.k][0]}</b><p>${PORTS[TR.k][1]}</p></div><div class="wiz-actions"><button class="btn primary" id="tnext">Volgende poort →</button></div>`:""}`;
+  el.querySelectorAll(".opt:not(:disabled)").forEach(b=>b.onclick=()=>{const o=b.dataset.o;TR.picked[o]=1;TR.tries++;
+    if(o===TR.k){TR.done=true;if(TR.tries===1){P.recN++;save();renderRec();addXP(5,"poort herkend")}else renderRec()}
+    else{if(TR.tries>=2)TR.done=true;renderRec();if(!TR.done)toast(`Nee, dat is geen ${PORTS[o][0]}. Nog een kans.`)}});
+  const n=$("tnext");if(n)n.onclick=newRec;
+}
+/* aansluiten */
+function newPlug(){const open=PLUG.filter(p=>!P.plugOk[p.id]&&(!TR||p.id!==TR.p.id));const pool=open.length?open:PLUG.filter(p=>!TR||p.id!==TR.p.id);
+  TR={p:pick(pool),tries:0,marks:{},done:false,msg:""};renderPlug()}
+function renderPlug(){
+  const p=TR.p,el=$("tgame");
+  el.innerHTML=`<div class="game-top"><span>Opdrachten juist <b>${Object.keys(P.plugOk).length}/${PLUG.length}</b></span></div>
+   <div class="task"><span class="eyebrow">Opdracht</span><p>${p.q}</p></div><div class="panelwrap">${panelSVG(p.gpu)}</div>
+   ${TR.msg?`<div class="fb ${TR.done?"ok":"no"}"><b>${TR.done?"Juist!":"Niet juist"}</b><p>${TR.msg}</p></div>`:""}
+   ${TR.done?`<div class="wiz-actions"><button class="btn primary" id="tnext">Volgende opdracht →</button></div>`:""}`;
+  el.querySelectorAll(".hit").forEach(h=>{const id=h.dataset.p;if(TR.marks[id])h.classList.add(TR.marks[id]);if(TR.done&&p.ok.includes(id))h.classList.add("ok");
+    const go=()=>{if(TR.done)return;TR.tries++;
+      if(p.ok.includes(id)){TR.marks[id]="ok";TR.done=true;TR.msg=p.e;if(TR.tries===1){P.plugOk[p.id]=1;save();renderPlug();addXP(10,"juist aangesloten")}else renderPlug()}
+      else{TR.marks[id]="no";let m=`Dat is ${PNAME[id]}.`;if(p.gpu&&(id==="m-hdmi"||id==="m-dp"))m+=" Met een grafische kaart in de pc geeft die poort meestal geen beeld.";TR.msg=m+" Probeer opnieuw.";renderPlug()}};
+    h.addEventListener("click",go);h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}})});
+  const n=$("tnext");if(n)n.onclick=newPlug;
+}
+/* snelle tickets */
+function newCase(){const open=CASES.filter(c=>!P.solved[c.id]&&(!TR||c.id!==TR.c.id));const pool=open.length?open:CASES.filter(c=>!TR||c.id!==TR.c.id);
+  const c=pick(pool);TR={c,order:shuffle(c.o.map((t,i)=>({t,ok:i===0}))),tries:0,hint:false,fb:null};renderCase()}
+function renderCase(){
+  const c=TR.c,el=$("tgame");
+  el.innerHTML=`<div class="game-top"><span>Opgelost <b>${Object.keys(P.solved).length}/${CASES.length}</b></span><span>Reeks <b>${P.streak}</b></span><span>Beste reeks <b>${P.bestStreak}</b></span></div>
+   <div class="task"><span class="eyebrow">Ticket${P.solved[c.id]?" · al eens opgelost":""}</span><p>${c.s}</p></div>
+   <p class="qq">Wat is de meest waarschijnlijke oorzaak?</p>
+   <div class="opts">${TR.order.map((o,i)=>`<button class="opt${o.picked?(o.ok?" right":" wrong"):""}" data-i="${i}" ${TR.fb||o.picked?"disabled":""}>${o.t}</button>`).join("")}</div>
+   ${TR.hint&&!TR.fb?`<div class="fb hintb"><b>Hint</b><p>${c.h}</p></div>`:""}
+   ${TR.fb?`<div class="fb ${TR.fb.ok?"ok":"no"}"><b>${TR.fb.m}</b><p>${c.e}</p></div>`:""}
+   <div class="wiz-actions">${!TR.fb&&!TR.hint?`<button class="btn" id="thint">Hint (−5 XP)</button>`:""}<button class="btn${TR.fb?" primary":""}" id="tnext">${TR.fb?"Volgend ticket →":"Overslaan"}</button></div>`;
+  el.querySelectorAll(".opt:not(:disabled)").forEach(b=>b.onclick=()=>{const o=TR.order[+b.dataset.i];o.picked=true;TR.tries++;
+    if(!o.ok){P.streak=0;save();if(TR.tries>=2){TR.order.forEach(x=>{if(x.ok)x.picked=true});TR.fb={ok:false,m:"Niet gevonden. Dit was de oorzaak:"}}else toast("Niet juist. Probeer nog eens (zonder punten).");renderCase();return}
+    const first=TR.tries===1,again=P.solved[c.id];let pts=first?15-(TR.hint?5:0):0;if(again)pts=Math.round(pts/3);
+    if(first){P.streak++;P.bestStreak=Math.max(P.bestStreak,P.streak)}P.solved[c.id]=1;
+    let m=first?"Juist!":"Juist, maar niet in één keer.";if(first&&P.streak>=3){pts+=5;m+=` Reeks van ${P.streak}: +5 bonus.`}
+    TR.fb={ok:true,m};save();renderCase();if(pts)addXP(pts,"snel ticket");else checkBadges()});
+  const h=$("thint");if(h)h.onclick=()=>{TR.hint=true;renderCase()};
+  $("tnext").onclick=()=>{if(!TR.fb){P.streak=0;save()}newCase()};
+}
+
+/* ---------- ter plaatse: zelf de poort aanwijzen ---------- */
+const DISPLAY_OK=["g-dp1","g-dp2","g-dp3","g-hdmi"];
+function portPick(){
+  return new Promise(res=>{
+    const at=S.f.id==="mobo_port"?"m-dp":"g-dp1",adapter=S.a.setup==="adapter";
+    const el=document.createElement("div");el.className="portpick";
+    let misses=0;
+    const draw=(msg,ok)=>{el.innerHTML=`<span class="meta">Ter plaatse · achterkant van de pc</span>
+      <p><b>De beeldkabel zit in de gemarkeerde poort${adapter?", via een verloopstuk":""}.</b> Klik op de poort waar de beeldkabel van de monitor hoort.</p>
+      <div class="panelwrap sm">${panelSVG(true,at,adapter)}</div>${msg?`<p class="pp-msg ${ok?"ok":"no"}">${msg}</p>`:""}`;
+      el.querySelectorAll(".hit").forEach(h=>{const id=h.dataset.p;
+        const go=()=>{if(el.dataset.done)return;
+          if(DISPLAY_OK.includes(id)){el.dataset.done=1;h.classList.add("ok");el.querySelectorAll(".hit").forEach(x=>x.style.pointerEvents="none");
+            const p=el.querySelector(".pp-msg");if(p)p.remove();el.insertAdjacentHTML("beforeend",`<p class="pp-msg ok">Juist: ${PNAME[id]}. ${id===at?"Daar zat de kabel al.":S.f.id==="mobo_port"?"Je verplaatst de kabel naar de grafische kaart.":"Daar hoort hij."}</p>`);res(misses)}
+          else{misses++;spend(1,300);logStep("portmiss","Verkeerde poort: "+PNAME[id],1,0,"bad");
+            let m=`Dat is ${PNAME[id]}. +1 min.`;if(id==="m-hdmi"||id==="m-dp")m+=" Deze pc heeft een grafische kaart: de beeldpoorten van het moederbord geven dan meestal geen beeld.";else m+=" Daar komt geen beeld uit.";
+            draw(m,false);}};
+        h.addEventListener("click",go);h.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}})});};
+    draw();add(el);
+  });
+}
+/* ================= OPSLAG & SPELER ================= */
+const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const KEY="servicedesk-sim-v1",TKEY="servicedesk-teacher-v1";
+const TEACHER_CODE="SAM-DOCENT",UNLOCK_CODE="OPEN-WEEK",SALT="sd-cvo-2026";
+const fresh=()=>({name:"",xp:0,badges:[],best:{},days:{},csat5:0,quiz:0,noGamble:0,chatFix:0,exams:[],unlock:false,dayBest:{},teacher:false,codes:[],recN:0,plugOk:{},solved:{},streak:0,bestStreak:0});
+let P=fresh();try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s)P=Object.assign(fresh(),s)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(P))}catch(e){}};
+let TK=[];try{TK=JSON.parse(localStorage.getItem(TKEY)||"[]")||[]}catch(e){TK=[]}
+const saveTK=()=>{try{localStorage.setItem(TKEY,JSON.stringify(TK))}catch(e){}};
+let OWNER=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const lc=s=>/^[A-Z][a-z]/.test(s)?s[0].toLowerCase()+s.slice(1):s;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const ini=n=>n.slice(0,2).toUpperCase();
+const isTeacher=()=>OWNER||P.teacher;
+const LEVELS=[[0,"Stagiair"],[150,"Helpdeskmedewerker"],[400,"Technieker"],[800,"Senior technieker"],[1300,"ICT-coördinator"]];
+const lvlOf=xp=>{let i=0;LEVELS.forEach((l,j)=>{if(xp>=l[0])i=j});return i};
+const HELP={1:["Lijst streept automatisch weg","Rechts zie je welke oorzaken nog mogelijk zijn. De lijst streept automatisch weg na elke test."],
+ 2:["Zelf wegstrepen","Vandaag streep je zelf oorzaken weg in de lijst. Sam vertelt je wel hoeveel oorzaken een test uitsluit, maar niet welke."],
+ 3:["Geen lijst, bewijs aanduiden","Er is geen lijst met oorzaken meer. Bij je diagnose duid je aan welke waarnemingen het bewijs zijn. Je bewijs moet volstaan om alle andere oorzaken uit te sluiten."]};
+const BADGES=[
+ ["first","Eerste ticket","Sluit je eerste ticket af.",()=>Object.keys(P.best).length>=1],
+ ["klant","Klantvriend","Krijg 5/5 tevredenheid.",()=>P.csat5>=1],
+ ["perfect","Perfecte dag","Haal 3 sterren op elk ticket van een dag.",()=>Object.values(P.dayBest).some(d=>d.perfect)],
+ ["week","Week overleefd","Werk alle vijf de dagen af.",()=>DAYS.every(d=>P.days[d.id])],
+ ["nogamble","Geen gokker","Sluit 10 tickets zonder te gokken.",()=>P.noGamble>=10],
+ ["chat","Chatkoning","Los 5 tickets op zonder ter plaatse te gaan.",()=>P.chatFix>=5],
+ ["quiz","Kennisbank","Beantwoord 10 kennisvragen juist.",()=>P.quiz>=10],
+ ["exam70","Geslaagd","Haal minstens 70/100 op het examen.",()=>P.exams.some(e=>e.score>=70)],
+ ["exam90","Uitmuntend","Haal minstens 90/100 op het examen.",()=>P.exams.some(e=>e.score>=90)],
+ ["all","Alle storingen","Los alle 24 storingen minstens één keer op.",()=>FAULTS.every(f=>P.best[f.id])],
+ ["gold","Sterrenjager","Haal 3 sterren op alle 24 storingen.",()=>FAULTS.every(f=>P.best[f.id]>=3)],
+ ["rec","Poortenkenner","Herken 15 poorten juist in de trainingsruimte.",()=>P.recN>=15],
+ ["plug","Juiste gaatje","Alle aansluitopdrachten juist bij de eerste poging.",()=>Object.keys(P.plugOk).length>=PLUG.length],
+ ["tix","Ticketkoning","Los alle snelle tickets op.",()=>Object.keys(P.solved).length>=CASES.length]
+];
+function toast(t,gold){const el=document.createElement("div");el.className="toast"+(gold?" gold":"");el.textContent=t;$("toasts").appendChild(el);setTimeout(()=>el.remove(),gold?3800:2300)}
+function addXP(n,why){if(n<=0)return;const b=lvlOf(P.xp);P.xp+=n;toast(`+${n} XP · ${why}`);const a=lvlOf(P.xp);if(a>b)toast(`Promotie: ${LEVELS[a][1]}!`,true);checkBadges();save();renderHUD()}
+function checkBadges(){BADGES.forEach(([id,n,,t])=>{if(!P.badges.includes(id)&&t()){P.badges.push(id);toast(`Badge: ${n}`,true)}});save()}
+function renderHUD(){
+  const i=lvlOf(P.xp),c=LEVELS[i],n=LEVELS[i+1],pct=n?(P.xp-c[0])/(n[0]-c[0])*100:100;
+  $("hud").innerHTML=`<div class="hud-l"><small>Niveau ${i+1}</small><b>${c[1]}</b></div>
+   <div class="hud-x"><span class="track"><i style="width:${Math.min(100,pct)}%"></i></span><span>${n?`${P.xp} XP · nog ${n[0]-P.xp} tot ${n[1]}`:`${P.xp} XP · hoogste niveau`}</span></div>
+   <span class="hud-b">★ ${P.badges.length}/${BADGES.length}</span>`;
+}
+
+/* ================= RAPPORTCODES ================= */
+function hash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h.toString(36).toUpperCase().padStart(7,"0")}
+function b64e(str){const b=new TextEncoder().encode(str);let s="";b.forEach(x=>s+=String.fromCharCode(x));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function b64d(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const bin=atob(s);return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
+function makeCode(payload){const b=b64e(JSON.stringify(payload));return `SD1.${b}.${hash(SALT+b)}`}
+function readCode(c){const m=/^SD1\.([A-Za-z0-9_-]+)\.([0-9A-Z]{7})$/.exec(c.trim());if(!m||hash(SALT+m[1])!==m[2])return null;try{const p=JSON.parse(b64d(m[1]));return p&&Array.isArray(p.r)?p:null}catch(e){return null}}
+const ptsOf=(st,cs)=>Math.round(st*4+cs*1.6);
+
+/* ================= PLANNING (HOME) ================= */
+let VIEW="home",SH=null,S=null,idleT=null,waitT=null,GEN=0;
+function dayUnlocked(i){return P.unlock||isTeacher()||i===0||!!P.days[DAYS[i-1].id]}
+function renderHome(){
+  GEN++;VIEW="home";clearTimeout(idleT);clearInterval(waitT);
+  const card=(m,i,locked)=>{
+    const list=m.list||[],st=list.reduce((a,id)=>a+(P.best[id]||0),0),max=list.length*3,done=P.days[m.id];
+    const cats=[...new Set(list.map(id=>FX(id).cat))].map(c=>`<span class="cat c-${c}">${CATS[c]}</span>`).join("");
+    const ex=m.exam&&P.exams.length?`<small class="dc-s">Beste score: <b>${Math.max(...P.exams.map(e=>e.score))}/100</b></small>`:"";
+    return `<article class="dc${locked?" locked":""}${done?" done":""}${m.exam?" exam":""}">
+      <div class="dc-h"><span class="dc-day">${m.day}</span>${done?`<span class="pill ok">Afgewerkt</span>`:locked?`<span class="pill">Vergrendeld</span>`:""}</div>
+      <h3>${m.t}</h3>
+      ${list.length?`<div class="dc-cats">${cats}</div><small class="dc-s">${list.length} meldingen · <span class="stars sm">★</span> ${st}/${max}</small>`:`<small class="dc-s">${m.exam?"6 meldingen · zonder hulp":"5 meldingen · alle onderdelen"}</small>${ex}`}
+      <small class="dc-help h${m.help}"><span class="hdots">${"●".repeat(4-m.help)}${"○".repeat(m.help-1)}</span>${HELP[m.help][0]}</small>
+      <button class="btn ${locked?"":"primary"}" data-m="${m.id}" ${locked?"disabled":""}>${locked?"Werk eerst de vorige dag af":done?"Opnieuw spelen":"Start dienst"}</button></article>`};
+  $("app").innerHTML=`
+  <section class="hero">
+    <div class="hero-t"><span class="eyebrow">Oefenmodule · probleem: geen beeld</span><h1>Servicedesk Simulator</h1>
+      <p>Je start als stagiair bij de ICT-dienst. Elke dag komen er meldingen binnen in de chat. Stel de juiste vragen, laat de gebruiker dingen proberen, ga ter plaatse als het moet en los het probleem zo snel en vriendelijk mogelijk op.</p></div>
+    <div class="player"><label for="pname">Jouw naam</label><input id="pname" type="text" maxlength="40" placeholder="Voornaam en naam" value="${esc(P.name)}">
+      <dl class="pstats"><div><dt>Tickets opgelost</dt><dd>${Object.keys(P.best).length}/24</dd></div><div><dt>Sterren</dt><dd>${Object.values(P.best).reduce((a,b)=>a+b,0)}/72</dd></div><div><dt>Badges</dt><dd>${P.badges.length}/${BADGES.length}</dd></div></dl></div>
+  </section>
+  <section><div class="sec-h"><h2>Planning van je week</h2>${P.unlock&&!isTeacher()?`<span class="pill ok">Alle dagen ontgrendeld</span>`:""}</div>
+    <div class="days">${DAYS.map((d,i)=>card(d,i,!dayUnlocked(i))).join("")}</div>
+    <div class="days extra">${EXTRA_MODES.map(m=>card(m,0,false)).join("")}</div></section>
+  ${trainHTML()}
+  <section class="howto"><div class="sec-h"><h2>Zo werkt het</h2></div>
+    <ol class="steps"><li><b>Neem het gesprek aan</b> en begroet de gebruiker.</li><li><b>Stel vragen</b> of laat de gebruiker iets proberen. Elke stap kost tijd.</li>
+    <li><b>Ga ter plaatse</b> als de chat niet volstaat (+5 min). Daar kan je de kast openen en Windows-tools gebruiken.</li>
+    <li><b>Kies de oorzaak.</b> In het begin van de week helpt een lijst die zichzelf wegstreept. Later streep je zelf weg, en op vrijdag en het examen duid je zelf het bewijs aan.</li>
+    <li><b>Sluit af</b> met een duidelijke uitleg. Je krijgt een nabespreking met jouw route naast de snelste route.</li>
+    <li><b>Bezorg je rapportcode</b> aan je leerkracht na elke dag en na het examen.</li></ol></section>
+  <section><div class="sec-h"><h2>Badges</h2><button class="btn ghost" id="wipe">Voortgang wissen</button></div>
+    <div class="badges">${BADGES.map(([id,n,d])=>{const g=P.badges.includes(id);return `<div class="badge${g?" got":""}"><span class="ico">${g?"★":"?"}</span><b>${n}</b><p>${d}</p></div>`}).join("")}</div></section>
+  ${P.codes.length?`<section><div class="sec-h"><h2>Mijn rapportcodes</h2></div><div class="codes">${P.codes.slice().reverse().map(c=>`<div class="codeline"><span>${esc(c.label)}</span><code>${c.code}</code><button class="btn sm2" data-copy="${c.code}">Kopieer</button></div>`).join("")}</div></section>`:""}
+  ${isTeacher()?teacherHTML():`<section class="tlock"><details><summary>Voor de leerkracht</summary>
+    <div class="tl-in"><label for="tcode">Code</label><input id="tcode" type="text" autocomplete="off" placeholder="Leerkracht- of ontgrendelcode"><button class="btn" id="tgo">Bevestigen</button><span id="tmsg" class="muted"></span></div></details></section>`}`;
+  $("pname").oninput=e=>{P.name=e.target.value.trim();save()};
+  document.querySelectorAll(".dc button[data-m]").forEach(b=>b.onclick=()=>renderBrief(b.dataset.m));
+  document.querySelectorAll("[data-train]").forEach(b=>b.onclick=()=>renderTrain(b.dataset.train));
+  bindCopy($("app"));
+  let arm=false;const w=$("wipe");w.onclick=()=>{if(!arm){arm=true;w.textContent="Zeker? Klik nogmaals";setTimeout(()=>{arm=false;w.textContent="Voortgang wissen"},3000);return}
+    const keepT=P.teacher;P=fresh();P.teacher=keepT;save();renderHUD();renderHome()};
+  if(isTeacher())bindTeacher();
+  else{const go=()=>{const v=$("tcode").value.trim().toUpperCase();
+      if(v===TEACHER_CODE){P.teacher=true;save();renderHome();toast("Leerkrachtmodus aan")}
+      else if(v===UNLOCK_CODE){P.unlock=true;save();renderHome();toast("Alle dagen ontgrendeld")}
+      else $("tmsg").textContent="Onbekende code. Controleer de schrijfwijze."};
+    $("tgo").onclick=go;$("tcode").onkeydown=e=>{if(e.key==="Enter")go()}}
+  window.scrollTo({top:0});
+}
+function bindCopy(root){root.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{const t=b.dataset.copy,ok=()=>{b.textContent="Gekopieerd";setTimeout(()=>b.textContent="Kopieer",1500)};
+  const fb=()=>{const c=b.previousElementSibling;const r=document.createRange();r.selectNodeContents(c);const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent="Ctrl+C om te kopiëren"};
+  try{navigator.clipboard.writeText(t).then(ok,fb)}catch(e){fb()}})}
+
+/* ---------- leerkrachtpaneel ---------- */
+function teacherHTML(){
+  const byName={};TK.forEach(r=>{const k=(r.n||"(geen naam)").trim().toLowerCase();(byName[k]=byName[k]||{name:r.n||"(geen naam)",reps:[]}).reps.push(r)});
+  const students=Object.values(byName).sort((a,b)=>a.name.localeCompare(b.name));
+  const rowS=s=>{const best={},days=new Set();let exam=null,last=0;
+    s.reps.forEach(r=>{r.r.forEach(([fi,st])=>{const id=FAULTS[fi]?.id;if(id)best[id]=Math.max(best[id]||0,st)});
+      if(DAYS.find(d=>d.id===r.m))days.add(r.m);if(r.m==="examen")exam=Math.max(exam??0,r.s);last=Math.max(last,r.d)});
+    const stars=Object.values(best).reduce((a,b)=>a+b,0);
+    return `<tr><td><b>${esc(s.name)}</b></td><td>${DAYS.map(d=>`<span class="dd${days.has(d.id)?" on":""}" title="${d.day}">${d.day.slice(0,2)}</span>`).join("")}</td>
+      <td>${Object.keys(best).length}/24</td><td>${stars}/72</td><td>${exam===null?"–":`<b class="${exam>=70?"okc":"badc"}">${exam}/100</b>`}</td><td>${s.reps.length}</td><td>${new Date(last).toLocaleDateString("nl-BE")}</td></tr>`};
+  const agg={};TK.forEach(r=>r.r.forEach(([fi,st,cs,t,w,g])=>{const f=FAULTS[fi];if(!f)return;const a=agg[f.id]=agg[f.id]||{f,n:0,st:0,w:0,g:0,t:0};a.n++;a.st+=st;a.w+=w>0?1:0;a.g+=g?1:0;a.t+=t}));
+  const fr=Object.values(agg).sort((a,b)=>a.st/a.n-b.st/b.n);
+  return `<section class="teacher"><div class="sec-h"><h2>Klasoverzicht</h2><span class="pill">Leerkracht</span></div>
+   <p class="muted">Cursisten krijgen na elke dag en na het examen een rapportcode. Plak hier de codes die je ontvangt, bijvoorbeeld uit je mailbox of Smartschool. Je mag er meerdere tegelijk plakken. Alles blijft in deze browser bewaard.</p>
+   <div class="paste"><textarea id="tpaste" rows="3" placeholder="SD1.eyJ…  (één of meer codes)"></textarea><div class="wiz-actions"><button class="btn primary" id="tadd">Codes toevoegen</button><span id="tres" class="muted"></span></div></div>
+   ${TK.length?`<h3 class="th3">Per cursist</h3><div class="tblwrap"><table><thead><tr><th>Cursist</th><th>Dagen</th><th>Storingen</th><th>Sterren</th><th>Beste examen</th><th>Rapporten</th><th>Laatst</th></tr></thead><tbody>${students.map(rowS).join("")}</tbody></table></div>
+   <h3 class="th3">Per storing: waar loopt de klas vast?</h3><p class="muted">Gesorteerd van moeilijk naar makkelijk. Fouten = minstens één foute oplossing. Gokken = oorzaak gekozen zonder voldoende bewijs.</p>
+   <div class="tblwrap"><table><thead><tr><th>Storing</th><th>Onderdeel</th><th>Pogingen</th><th>Gem. sterren</th><th>Fouten</th><th>Gokken</th><th>Gem. tijd</th></tr></thead>
+   <tbody>${fr.map(a=>{const av=a.st/a.n;return `<tr class="${av<2?"hard":""}"><td>${a.f.d}</td><td><span class="cat c-${a.f.cat}">${CATS[a.f.cat]}</span></td><td>${a.n}</td><td><span class="bar"><i style="width:${av/3*100}%"></i></span> ${av.toFixed(1)}</td><td>${Math.round(a.w/a.n*100)}%</td><td>${Math.round(a.g/a.n*100)}%</td><td>${Math.round(a.t/a.n)} min <small>(norm ${a.f.par})</small></td></tr>`}).join("")}</tbody></table></div>`:`<p class="empty">Nog geen rapportcodes toegevoegd. Na het plakken verschijnt hier een overzicht per cursist en per storing.</p>`}
+   <div class="wiz-actions tfoot"><span class="muted">Ontgrendelcode voor cursisten: <code>${UNLOCK_CODE}</code> · leerkrachtcode: <code>${TEACHER_CODE}</code></span>
+     ${TK.length?`<button class="btn ghost" id="tclear">Klasoverzicht wissen</button>`:""}${P.teacher&&!OWNER?`<button class="btn ghost" id="toff">Leerkrachtmodus uit</button>`:""}</div></section>`;
+}
+function bindTeacher(){
+  $("tadd").onclick=()=>{const raw=$("tpaste").value.match(/SD1\.[A-Za-z0-9_-]+\.[0-9A-Z]{7}/g)||[];let ok=0,dup=0,bad=0;
+    const all=$("tpaste").value.match(/SD1[^\s]*/g)||[];bad=all.length-raw.length;
+    raw.forEach(c=>{const p=readCode(c);if(!p){bad++;return}if(TK.some(r=>r.code===c)){dup++;return}TK.push(Object.assign(p,{code:c}));ok++});
+    saveTK();renderHome();const m=$("tres");if(m)m.textContent=`${ok} toegevoegd${dup?` · ${dup} al aanwezig`:""}${bad?` · ${bad} ongeldig of gewijzigd`:""}`};
+  const c=$("tclear");if(c){let arm=false;c.onclick=()=>{if(!arm){arm=true;c.textContent="Zeker? Klik nogmaals";setTimeout(()=>{arm=false;c.textContent="Klasoverzicht wissen"},3000);return}TK=[];saveTK();renderHome()}}
+  const o=$("toff");if(o)o.onclick=()=>{P.teacher=false;save();renderHome()};
+}
+
+function modeOf(id){return DAYS.find(d=>d.id===id)||EXTRA_MODES.find(d=>d.id===id)}
+function renderBrief(id){
+  const m=modeOf(id);VIEW="brief";
+  $("app").innerHTML=`<section class="brief"><span class="eyebrow">${m.day} · briefing</span><h2>${m.t}</h2>
+   <div class="brief-card"><div class="ni-h"><span class="ava">S</span><b>Sam</b> · senior technieker</div>
+    <p>${m.exam?"Vandaag sta je er alleen voor. Toon wat je kan!":"Goedemorgen! Voor je begint, dit heb je vandaag nodig:"}</p>
+    <ul>${m.tips.map(t=>`<li>${t}</li>`).join("")}</ul></div>
+   <div class="help-card h${m.help}"><span class="hdots">${"●".repeat(4-m.help)}${"○".repeat(m.help-1)}</span><div><b>Hulp vandaag: ${lc(HELP[m.help][0])}</b><p>${HELP[m.help][1]}</p></div></div>
+   ${m.exam&&!P.name?`<p class="warnline">Vul eerst je naam in op de planning, zodat die op je examenrapport staat.</p>`:""}
+   <div class="wiz-actions"><button class="btn" id="bback">← Terug naar de planning</button><button class="btn primary" id="bstart" ${m.exam&&!P.name?"disabled":""}>Start dienst</button></div></section>`;
+  $("bback").onclick=renderHome;$("bstart").onclick=()=>startShift(id);
+  window.scrollTo({top:0});
+}
+
+/* ================= DIENST ================= */
+function startShift(id){
+  const m=modeOf(id);
+  let list=shuffle(m.list||[]);
+  if(id==="vrij")list=shuffle(FAULTS).slice(0,5).map(f=>f.id);
+  if(id==="examen")list=shuffle(Object.keys(CATS)).map(c=>shuffle(FAULTS.filter(f=>f.cat===c))[0].id);
+  SH={id,m,list,idx:0,res:[],exam:!!m.exam,help:m.help,people:shuffle(PEOPLE).slice(0,list.length)};
+  VIEW="shift";
+  $("app").innerHTML=`<div class="sd" id="sd">
+   <div class="sd-top"><span class="sd-logo"><span class="sd-mark">IT</span>Servicedesk</span><span class="sd-day">${m.day} · ${m.t}</span>
+     <span class="sd-prog" id="sprog"></span><span class="sd-me"><span class="sd-dot"></span>${esc(P.name||"jij")}</span><button class="btn sm" id="sstop">Dienst stoppen</button></div>
+   <div class="sd-body">
+    <aside class="sd-side"><h4>Meldingen vandaag</h4><div id="squeue"></div></aside>
+    <div class="sd-main"><div class="sd-head" id="shead"></div>
+      <div class="onsite" id="sonsite" hidden><div class="os-h"><span id="osloc"></span><span class="runbar"><i id="srun"></i></span></div><div id="scene"></div></div>
+      <div class="thread" id="sthread" aria-live="polite"></div><div class="composer" id="scomp"></div></div>
+    <aside class="sd-det" id="sdet"></aside></div></div>`;
+  let arm=false;const st=$("sstop");st.onclick=()=>{if(!arm){arm=true;st.textContent="Zeker? Klik nogmaals";setTimeout(()=>{arm=false;st.textContent="Dienst stoppen"},3000);return}renderHome()};
+  newTicket();
+  window.scrollTo({top:0});
+}
+function newTicket(){
+  GEN++;
+  clearTimeout(idleT);clearInterval(waitT);
+  const f=FX(SH.list[SH.idx]),p=SH.people[SH.idx];
+  S={f,a:f.a,p,u:pick(f.us),t:0,shown:0,used:{},alive:new Set(FAULTS.map(x=>x.id)),elimBy:{},struck:new Set(),busy:false,useless:0,tips:0,sel:null,stage:"incoming",onsite:false,
+     greet:null,wrong:0,asked:0,nudged:false,no:3100+Math.floor(Math.random()*800),wait:0,tab:"q",log:[],ev:new Set(),diagOpen:false,evOk:null,evOther:[],
+     v:{led:null,scr:"unknown",open:false,flash:false,hl:null,fixed:false,note:null}};
+  $("sonsite").hidden=true;$("osloc").textContent=`Ter plaatse · ${p[1]}`;
+  renderQueue();renderHead();renderDet();renderIncoming();
+}
+const status=()=>S.stage==="incoming"?"Nieuw":S.stage==="done"?"Gesloten":S.v.fixed?"Opgelost":S.onsite?"Ter plaatse":"In behandeling";
+const stCls=()=>"st-"+status().replace(/\s/g,"").toLowerCase();
+function renderQueue(){
+  $("sprog").innerHTML=SH.list.map((_,i)=>`<i class="${i<SH.idx?"d":i===SH.idx?"a":""}"></i>`).join("")+`<small>ticket ${SH.idx+1}/${SH.list.length}</small>`;
+  $("squeue").innerHTML=SH.list.map((id,i)=>{const p=SH.people[i],r=SH.res[i];
+    const cls=i<SH.idx?"done":i===SH.idx?(S.stage==="incoming"?"new":"active"):"wait";
+    const sub=i<SH.idx?`${"★".repeat(r.st)} · ${r.cs}/5`:i===SH.idx?(S.stage==="incoming"?"wacht op jou":status()):"in de wachtrij";
+    return `<div class="conv ${cls}"><span class="av">${ini(p[0])}</span><div><b>${p[0]}</b><small>${sub}</small></div>${cls==="new"?`<span class="badge-n">1</span>`:""}</div>`}).join("");
+}
+function renderHead(){
+  $("shead").innerHTML=`<span class="av lg">${ini(S.p[0])}</span><div class="h-who"><b>${S.p[0]}</b><small>${S.p[1]} · ${S.stage==="incoming"?"wacht op een medewerker":S.stage==="done"?"gesprek beëindigd":"online"}</small></div>
+    <span class="pill ${stCls()}">${status()}</span>`;
+}
+function renderIncoming(){
+  $("sthread").innerHTML=`<div class="incoming"><span class="eyebrow">Nieuw gesprek in de wachtrij</span>
+    <div class="inc-card"><span class="av lg">${ini(S.p[0])}</span><div><b>${S.p[0]} · ${S.p[1]}</b><p>“Hallo, ${lc(S.u)}”</p><small id="swait">wacht 0:00</small></div></div>
+    <button class="btn primary" id="saccept">Gesprek aannemen</button></div>`;
+  $("scomp").innerHTML="";$("saccept").onclick=accept;
+  waitT=setInterval(()=>{S.wait++;const w=$("swait");if(w)w.textContent=`wacht ${Math.floor(S.wait/60)}:${String(S.wait%60).padStart(2,"0")}`},1000);
+}
+function accept(){
+  clearInterval(waitT);S.stage="greet";$("sthread").innerHTML="";
+  sys(`Je hebt het gesprek met ${S.p[0]} aangenomen · ticket #${S.no} aangemaakt`);
+  bubble("user",`Hallo, ${lc(S.u)}`);
+  if(SH.idx===0)note(SH.help===1?"Begroet de gebruiker eerst. Stel daarna gerichte vragen. Rechts zie je welke oorzaken nog mogelijk zijn.":
+    SH.help===2?"Vandaag streep je zelf weg: klik op ✕ naast een oorzaak die niet meer kan.":"Vandaag geen lijst. Je waarnemingen verschijnen rechts. Bij je diagnose duid je aan welke het bewijs zijn.");
+  refresh();armIdle();
+}
+
+/* ---------- berichten ---------- */
+function add(el){const t=$("sthread");t.appendChild(el);t.scrollTop=t.scrollHeight;return el}
+function bubble(who,html){const el=document.createElement("div");el.className="row "+who;
+  el.innerHTML=(who==="user"?`<span class="av">${ini(S.p[0])}</span>`:"")+`<div class="bub">${html}</div>`;return add(el)}
+function note(txt,cls){if(SH.exam)return;const el=document.createElement("div");el.className="note-i"+(cls?" "+cls:"");
+  el.innerHTML=`<span class="ni-h"><span class="ava">S</span><b>Sam</b> · interne notitie</span><p>${txt}</p>`;return add(el)}
+function sys(txt){const el=document.createElement("div");el.className="sysmsg";el.innerHTML=txt;return add(el)}
+function obsMsg(title,txt,good){const el=document.createElement("div");el.className="obs-c"+(good?" good":"");el.innerHTML=`<span class="meta">${title}</span><p>${txt}</p>`;return add(el)}
+function typing(ms){const g=GEN;return new Promise(r=>{const el=document.createElement("div");el.className="row user typing";
+  el.innerHTML=`<span class="av">${ini(S.p[0])}</span><div class="bub"><span class="dots"><i></i><i></i><i></i></span><small>${S.p[0]} typt…</small></div>`;add(el);
+  setTimeout(()=>{el.remove();if(g===GEN)r()},RM?200:ms)})}
+const wait=ms=>{const g=GEN;return new Promise(r=>setTimeout(()=>{if(g===GEN)r()},RM?Math.min(ms,200):ms))};
+
+/* ---------- composer ---------- */
+function chip(id,label,cost,dis,cls){return `<button class="chip${cls?" "+cls:""}" data-a="${id}" ${dis?"disabled":""}>${label}${cost?`<span class="c">${cost} min</span>`:""}</button>`}
+function renderComp(){
+  const c=$("scomp"),b=S.busy,nm=S.p[0];
+  if(S.stage==="greet"){
+    c.innerHTML=`<h4>Kies je eerste bericht</h4><div class="chips">${chip("g1",`"Goedemorgen ${nm}, je spreekt met de ICT-dienst. Ik help je graag verder."`,0,b)}
+      ${chip("g2",`"Wat is het probleem?"`,0,b)}${chip("g3","Meteen een vraag stellen",0,b,"ghost")}</div>`;
+  }else if(S.stage==="work"){
+    const os=S.onsite,tab=S.tab;
+    const lab=id=>(os&&T[id][2]&&!["change","when","setup"].includes(id))?T[id][2]:T[id][0];
+    const tabs=[["q",`Vragen aan ${nm}`],["d",os?"Zelf uitvoeren":`Laat ${nm} iets doen`],["o","Ter plaatse"]];
+    let body="";
+    if(tab==="q"||tab==="d")body=`<div class="chips">${GROUPS[tab].map(id=>chip(id,lab(id),T[id][3],b||S.used[id]||(os&&id==="photo"))).join("")}</div>`;
+    else body=(os?"":`<div class="chips">${chip("onsite",`Ga naar ${S.p[2]}`,5,b,"go")}<small class="hintline">Ter plaatse kan je de kast openen en Windows-tools gebruiken.</small></div>`)+
+      [["o1","Kijken en kabels"],["o2","Windows en drivers"],["o3","In de kast"]].map(([g,t])=>`<div class="cg"><h5>${t}</h5><div class="chips">${GROUPS[g].map(id=>chip(id,T[id][2],T[id][3],b||!os||S.used[id],os?"":"locked")).join("")}</div></div>`).join("");
+    c.innerHTML=`<div class="ctabs" role="tablist">${tabs.map(([k,t])=>`<button class="ctab" role="tab" aria-selected="${k===tab}" data-tab="${k}">${t}</button>`).join("")}</div>${body}`;
+    c.querySelectorAll(".ctab").forEach(x=>x.onclick=()=>{S.tab=x.dataset.tab;renderComp()});
+  }else if(S.stage==="closing"){
+    c.innerHTML=`<h4>Laatste bericht aan ${nm}</h4><div class="chips">${chip("c1",`"${S.f.sol} Laat gerust iets weten als het opnieuw gebeurt. Fijne dag!"`,0,b)}
+      ${chip("c2",`"Opgelost. Ticket wordt gesloten."`,0,b)}${chip("c3","Ticket sluiten zonder bericht",0,b,"ghost")}</div>`;
+  }else c.innerHTML="";
+  c.querySelectorAll(".chip:not(:disabled)").forEach(x=>x.onclick=()=>act(x.dataset.a));
+}
+
+/* ---------- ticketpaneel ---------- */
+const starsFor=t=>t<=S.f.par?3:t<=Math.round(S.f.par*1.6)?2:1;
+const starHTML=(n,cls)=>`<span class="stars ${cls||""}">${"★".repeat(n)}<span class="off">${"★".repeat(3-n)}</span></span>`;
+const evLog=()=>S.log.filter(e=>e.ev);
+function renderDet(){
+  const d=$("sdet");
+  if(S.stage==="incoming"){d.innerHTML=`<div class="det-card"><h4>Ticket</h4><p class="muted">Neem het gesprek aan om het ticket te openen.</p></div>`;return}
+  const st=starsFor(S.t),p=S.f.par,lim=st===3?p:st===2?Math.round(p*1.6):null,work=S.stage==="work",h=SH.help;
+  const head=`<div class="det-card"><div class="det-top"><h4>Ticket #${S.no}</h4><span class="pill ${stCls()}">${status()}</span></div>
+    <dl class="kv"><dt>Gebruiker</dt><dd>${S.p[0]}</dd><dt>Locatie</dt><dd>${S.p[1]}</dd><dt>Hulp</dt><dd>${HELP[h][0]}</dd></dl>
+    <div class="det-time"><div><span class="eyebrow">Bestede tijd</span><b id="sclock">${S.shown} min</b></div>
+    <div class="goal">${starHTML(st,"sm")}<small>${lim!==null?`nog ${Math.max(0,lim-S.t)} min voor ${st} ★`:"minimum 1 ★"}</small></div></div></div>`;
+  const tipBtn=work&&!SH.exam?`<button class="btn wide" id="stip" ${S.busy?"disabled":""}>Vraag Sam om een tip (+2 min)</button>`:"";
+  let body="";
+  if(h===1){
+    const alive=FAULTS.filter(x=>S.alive.has(x.id)),out=FAULTS.filter(x=>!S.alive.has(x.id));
+    body=`<div class="det-card"><div class="det-top"><h4>Mogelijke oorzaken</h4><span class="alive">${alive.length} van 24</span></div>
+      <div class="hyp">${alive.map(x=>hyBtn(x,!work)).join("")}</div>
+      ${out.length?`<details class="outlist"><summary>${out.length} uitgesloten</summary>${out.map(x=>`<div class="hy out"><span class="hy-t">${x.d}</span><span class="hy-why">✕ ${S.elimBy[x.id]}</span></div>`).join("")}</details>`:""}
+      ${work?`<button class="btn primary wide" id="sdiag" ${!S.sel||S.busy?"disabled":""}>${S.sel?"Oplossen en ticket sluiten":"Kies een oorzaak"}</button>`:""}${tipBtn}</div>`;
+  }else if(h===2){
+    const open=FAULTS.filter(x=>!S.struck.has(x.id)),out=FAULTS.filter(x=>S.struck.has(x.id));
+    body=`<div class="det-card"><div class="det-top"><h4>Mogelijke oorzaken</h4><span class="alive">${open.length} open</span></div>
+      <p class="tiny">Klik op ✕ om een oorzaak weg te strepen. Klik op de naam om ze te kiezen.</p>
+      <div class="hyp">${open.map(x=>`<div class="hyrow">${hyBtn(x,!work)}<button class="strike" data-x="${x.id}" aria-label="Streep weg: ${esc(x.d)}" ${!work?"disabled":""}>✕</button></div>`).join("")}</div>
+      ${out.length?`<details class="outlist" ${S.openOut?"open":""}><summary>${out.length} weggestreept</summary>${out.map(x=>`<div class="hyrow"><div class="hy out"><span class="hy-t">${x.d}</span></div><button class="strike back" data-x="${x.id}" ${!work?"disabled":""}>Terug</button></div>`).join("")}</details>`:""}
+      ${work?`<button class="btn primary wide" id="sdiag" ${!S.sel||S.busy?"disabled":""}>${S.sel?"Oplossen en ticket sluiten":"Kies een oorzaak"}</button>`:""}${tipBtn}</div>`;
+  }else{
+    const ev=evLog();
+    if(S.diagOpen&&work){
+      body=`<div class="det-card diagform"><h4>Diagnose stellen</h4>
+        <label for="ssel">Oorzaak</label><select id="ssel"><option value="">Kies een oorzaak…</option>${Object.keys(CATS).map(c=>`<optgroup label="${CATS[c]}">${FAULTS.filter(x=>x.cat===c).map(x=>`<option value="${x.id}" ${S.sel===x.id?"selected":""}>${x.d}</option>`).join("")}</optgroup>`).join("")}</select>
+        <span class="lbl">Bewijs: welke waarnemingen tonen dit aan?</span>
+        <div class="evlist">${ev.length?ev.map(e=>`<label class="evi"><input type="checkbox" data-ev="${e.i}" ${S.ev.has(e.i)?"checked":""}><span><b>${e.label}</b>${e.res}</span></label>`).join(""):`<p class="tiny">Je hebt nog geen waarnemingen. Stel eerst vragen of voer tests uit.</p>`}</div>
+        <button class="btn primary wide" id="sdiag" ${!S.sel||!S.ev.size||S.busy?"disabled":""}>Oplossen en ticket sluiten</button><button class="btn wide" id="sdcancel">Nog verder zoeken</button></div>`;
+    }else body=`<div class="det-card"><div class="det-top"><h4>Mijn waarnemingen</h4><span class="alive">${ev.length}</span></div>
+      <div class="notes">${ev.length?ev.map(e=>`<div class="nt"><b>${e.label}</b><span>${e.res}</span></div>`).join(""):`<p class="tiny">Wat je ziet en hoort, verschijnt hier.</p>`}</div>
+      ${work?`<button class="btn primary wide" id="sdopen" ${S.busy?"disabled":""}>Stel diagnose</button>`:""}${tipBtn}</div>`;
+  }
+  d.innerHTML=head+body;
+  d.querySelectorAll(".hy[data-h]:not(:disabled)").forEach(b=>b.onclick=()=>{S.sel=b.dataset.h;renderDet()});
+  d.querySelectorAll(".strike:not(:disabled)").forEach(b=>b.onclick=()=>{const x=b.dataset.x;if(S.struck.has(x)){S.struck.delete(x);S.openOut=true}else{S.struck.add(x);if(S.sel===x)S.sel=null}renderDet()});
+  const upd=()=>{const g=$("sdiag");if(g&&SH.help===3)g.disabled=!S.sel||!S.ev.size||S.busy};
+  const sel=$("ssel");if(sel)sel.onchange=()=>{S.sel=sel.value||null;upd()};
+  d.querySelectorAll("[data-ev]").forEach(cb=>cb.onchange=()=>{const i=+cb.dataset.ev;cb.checked?S.ev.add(i):S.ev.delete(i);upd()});
+  const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn};
+  on("sdiag",diagnose);on("stip",tip);on("sdopen",()=>{S.diagOpen=true;renderDet()});on("sdcancel",()=>{S.diagOpen=false;renderDet()});
+}
+const hyBtn=(x,dis)=>`<button class="hy${S.sel===x.id?" sel":""}" data-h="${x.id}" ${dis?"disabled":""}><span class="cat c-${x.cat}">${CATS[x.cat]}</span><span class="hy-t">${x.d}</span></button>`;
+function tickClock(to,ms){const from=S.shown,t0=performance.now();
+  const step=n=>{const k=Math.min(1,(n-t0)/Math.max(ms,1));S.shown=Math.round(from+(to-from)*k);const el=$("sclock");if(el)el.textContent=S.shown+" min";if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
+function spend(min,ms){S.t+=min;tickClock(S.t,ms||600)}
+function refresh(){renderQueue();renderHead();renderDet();renderComp()}
+function armIdle(){clearTimeout(idleT);idleT=setTimeout(()=>{if(VIEW==="shift"&&S&&S.stage==="work"&&!S.busy&&!S.nudged){S.nudged=true;
+  note(SH.help===1?"Twijfel je? Kijk welke oorzaken nog overblijven en zoek een vraag of test die er een paar van elkaar onderscheidt. Of vraag me een tip.":"Twijfel je? Bekijk je waarnemingen nog eens. Welke oorzaken passen daar nog bij? Of vraag me een tip.")}},45000)}
+
+/* ---------- eliminatie & logboek ---------- */
+function elim(id){
+  const r=OBS[id](S.f),newly=[];
+  S.alive.forEach(x=>{const fx=FX(x);if(OBS[id](fx).k!==r.k){S.alive.delete(x);S.elimBy[x]=lc(T[id][2]||T[id][0]);newly.push(fx)}});
+  if(SH.help===1&&S.sel&&!S.alive.has(S.sel))S.sel=null;return newly;
+}
+function logStep(id,label,cost,n,kind,res,ev){S.log.push({i:S.log.length,id,label,cost,n,kind,res:res||"",ev:!!ev})}
+function renderScene(){const el=$("scene");if(el&&S.onsite)el.innerHTML=sceneSVG(S.v,S.f)}
+function fixIt(){S.v.fixed=true;S.v.scr="desktop";S.v.hl=null;S.v.led="white"}
+function visual(id,r){
+  const V=S.v,A=S.a,fix=r.k.startsWith("fix:"),end=fn=>[0,()=>{V.hl=null;fn&&fn()}];
+  const seq=(arr,last)=>arr.map(([s,ms])=>[ms,()=>{V.scr=s}]).concat([end(last)]);
+  const H=(k,ms,last)=>[[ms||900,()=>V.hl=k],end(last)];
+  switch(id){
+   case"led":return H("led",600,()=>V.led=A.led);
+   case"pcon":return H("tower",700);
+   case"osd":return H("screen",600,()=>V.scr=A.scr);
+   case"flash":return[[300,()=>V.flash=true],[1400,()=>{}],end(()=>{V.flash=false;V.scr=A.scr})];
+   case"wake":return fix?H("screen",700,fixIt):r.k==="brief"?[[500,()=>{}],[1200,()=>V.scr="desktop"],end(()=>V.scr=A.scr)]:H("tower",700);
+   case"mpower":return H("power",1200,fix?fixIt:null);
+   case"pcpower":return H(A.setup==="dock"?"tower":"pcpower",1200,fix?fixIt:null);
+   case"input":return r.k==="nomenu"?H("screen",1000,()=>V.scr=A.scr):[[1400,()=>V.scr="menu"],end(fix?fixIt:()=>V.scr=A.scr)];
+   case"brightness":return r.k==="nomenu"?H("screen",1000,()=>V.scr=A.scr):[[1400,()=>V.scr="menub"],end(fix?fixIt:()=>V.scr=A.scr)];
+   case"reseat":case"cable":case"direct":case"port":return H("video",1300,fix?fixIt:null);
+   case"othermon":return H("video",1500);
+   case"boot":{if(fix)return seq([["off",400],["bios",900]],fixIt);
+     const B={none:[["off",700],["off",500]],"logo-nosig":[["off",400],["bios",1000],["loading",1000]],"logo-login-black":[["off",400],["bios",900],["loading",800],["login",900]],
+      "logo-range":[["off",400],["bios",1000]],"logo-cursor":[["off",400],["bios",900],["loading",800],["login",800]],"logo-flicker":[["off",400],["bios",900],["loading",900]],
+      monoff:[["off",1400]],sound:[["dark",1500]],dim:[["dim",1500]],dead:[[V.scr==="unknown"?A.scr:V.scr,1200]],works:[["off",400],["bios",900],["loading",900]],dock:[["nosig",1500]]};
+     if(A.boot==="sound")V.note="♪";
+     return seq(B[A.boot],()=>{V.note=null;V.scr=A.boot==="works"?"desktop":A.scr})}
+   case"winp":return fix?[[900,()=>V.scr="winp"],end(fixIt)]:H("screen",700);
+   case"drvreset":return fix?[[250,()=>V.scr="white"],end(fixIt)]:r.k==="flash"?[[250,()=>V.scr="white"],[500,()=>V.scr=A.scr],end()]:H("screen",600);
+   case"taskmgr":return fix?[[1300,()=>V.scr="taskmgr"],end(fixIt)]:H("screen",700);
+   case"energy":return fix?[[1300,()=>V.scr="energy"],end(fixIt)]:r.k==="ok"?[[1200,()=>V.scr="energy"],end(()=>V.scr=A.scr)]:H("screen",600);
+   case"safe":return r.k==="safe"?seq([["off",400],["bios",800],["loading",800]],()=>V.scr="safe"):seq([["off",1000]],()=>V.scr=A.scr);
+   case"lowres":return fix?seq([["off",400],["bios",800],["loading",800]],fixIt):r.k==="low"?seq([["off",400],["bios",700],["lowres",1300]],()=>V.scr=A.scr):seq([["off",1000]],()=>V.scr=A.scr);
+   case"devmgr":return r.k==="na"?H("screen",600):[[500,()=>V.scr="safe"],[1400,()=>V.scr="devmgr-"+(r.k==="warn"?"warn":r.k==="conflict"?"conflict":"ok")],end()];
+   case"rollback":case"ddu":return r.k==="na"?H("screen",600):fix?[[600,()=>V.scr="safe"],[1500,()=>V.scr="progress"],end(fixIt)]:[[600,()=>V.scr="safe"],[1200,()=>V.scr="progress"],end(()=>V.scr="safe")];
+   case"temp":return r.k==="na"?H("screen",600):[[400,()=>V.scr="desktop"],[1400,()=>V.scr=r.k==="hot"?"temp-hot":"temp-ok"],end()];
+  }
+  if(OPEN_CASE.includes(id)){
+    if(r.k==="na")return H("tower",800);
+    const part={debug:"dbg",gpupower:"gpu",gpuseat:"gpu",gpuclean:"gpu",ram:"ram",psu:"psu",cmos:"cmos"}[id];
+    return[[700,()=>V.open=true],[1100,()=>V.hl=part],end(fix?fixIt:null)];
+  }
+  return[[500,()=>{}],end()];
+}
+
+/* ---------- acties ---------- */
+const shortT=id=>T[id][0]||T[id][2];
+async function act(a){
+  if(S.busy)return;clearTimeout(idleT);
+  const f=S.f,nm=S.p[0];S.busy=true;refresh();
+  if(["g1","g2","g3"].includes(a)){
+    S.greet=a;S.stage="work";
+    if(a==="g1"){bubble("agent",`Goedemorgen ${nm}, je spreekt met de ICT-dienst. Ik help je graag verder.`);await typing(1000);bubble("user","Fijn, dank je! Zeg maar wat ik moet doen.");
+      note("Mooie start. Een vriendelijke begroeting stelt de gebruiker gerust.","good")}
+    else if(a==="g2"){bubble("agent","Wat is het probleem?");await typing(1000);bubble("user","Euh… dat schreef ik net.");
+      note("Dat klonk kortaf, en de gebruiker had het probleem al beschreven. Begroeten telt mee in de tevredenheid.","warn")}
+    else note("Je slaat de begroeting over. Dat werkt, maar de gebruiker voelt zich minder geholpen.","warn");
+  }
+  else if(a==="onsite"){
+    if(S.asked===0)note("Je vertrekt meteen naar het lokaal. Met een paar vragen in de chat had je misschien tijd gespaard.","warn");
+    bubble("agent",`Ik kom even langs in ${S.p[2]}. Tot zo!`);await typing(800);bubble("user","Top, ik wacht op je.");
+    sys("Je wandelt naar het lokaal…");spend(5,1400);await wait(1400);
+    logStep("onsite","Ter plaatse",5,0,"move");const mv=S.log[S.log.length-1];
+    S.onsite=true;S.tab="o";$("sonsite").hidden=false;
+    sys(`Je bent ter plaatse in ${S.p[2]} · +5 min`);
+    const seen=[];["led","pcon","osd"].forEach(t=>{if(!S.used[t]){S.used[t]=1;const r=OBS[t](f);seen.push(r.t);const nw=elim(t);mv.n+=nw.length;logStep(t,T[t][2],0,nw.length,"obs",r.t,true);visual(t,r).forEach(s=>s[1]())}});
+    renderScene();
+    if(seen.length)obsMsg("Ter plaatse · wat je meteen ziet",seen.join(" "));
+  }
+  else if(a==="photo"){
+    bubble("agent",T.photo[1]);spend(2,1500);S.used.photo=1;S.asked++;await typing(1600);
+    let tot=0;const parts=[];["led","osd"].forEach(t=>{if(!S.used[t]){S.used[t]=1;const r=OBS[t](f);const nw=elim(t);tot+=nw.length;parts.push([t,r,nw.length]);visual(t,r).forEach(s=>s[1]())}});
+    logStep("photo","Foto gevraagd",2,tot,"test");
+    parts.forEach(([t,r,n])=>logStep(t,t==="led"?"Foto: lampje van de monitor":"Foto: wat op het scherm staat",0,0,"obs",r.t,true));
+    const pv=Object.assign({},S.v,{led:S.a.led,scr:S.v.fixed?"desktop":S.a.scr,open:false,flash:false,hl:null,note:null});
+    bubble("user",`<div class="photo">${sceneSVG(pv,f)}</div><small class="ph-cap">IMG_${S.no}.jpg</small>`);await wait(300);bubble("user","Zo ziet het eruit.");
+    note(`Kijk goed naar de foto: het lampje, het scherm en de kabels.${SH.help===1&&tot?` De foto sluit ${tot===1?"één oorzaak":tot+" oorzaken"} uit.`:""}`);
+  }
+  else if(T[a]){
+    const r=OBS[a](f),fix=r.k.startsWith("fix:"),before=S.alive.size,cost=T[a][3];
+    S.used[a]=1;
+    const askUser=!S.onsite||["change","when","setup"].includes(a);
+    if(askUser){
+      S.asked++;bubble("agent",T[a][1]);spend(cost,1300);await typing(1000+cost*250);
+      const newly=a==="change"?[]:elim(a);visual(a,r).forEach(s=>s[1]());if(S.onsite)renderScene();
+      bubble("user",r.u);logStep(a,shortT(a),cost,newly.length,a==="change"?"info":fix?"fix":"test",r.t,a!=="change");
+      if(fix)sys(`Er is weer beeld bij ${nm}`);
+      if(a==="change")note("Goede vraag! 'Wat is er veranderd?' is vaak de snelste weg naar de oorzaak. Deze vraag sluit niets uit, maar geeft je een spoor.","good");
+      else coach(a,r,newly,before,fix);
+    }else{
+      if(a==="port"&&S.a.setup!=="dock"){const miss=await portPick();if(miss)note(`Je koos ${miss===1?"één keer":miss+" keer"} een verkeerde poort. Beeldkabels horen in de grafische kaart als die er is.`,"warn")}
+      S.v.flash=false;S.v.hl=null;
+      const steps=visual(a,r),k=RM?.25:1,total=steps.reduce((x,s)=>x+s[0]*k,0)+250;
+      const bar=$("srun");bar.style.transition="none";bar.style.width="0";bar.offsetWidth;bar.style.transition=`width ${total}ms linear`;bar.style.width="100%";
+      spend(cost,total);let acc=0;const g=GEN;steps.forEach(([ms,fn])=>{setTimeout(()=>{if(g!==GEN)return;fn();renderScene()},acc);acc+=ms*k});
+      await new Promise(res=>setTimeout(()=>{if(g===GEN)res()},total));bar.style.transition="none";bar.style.width="0";
+      const newly=elim(a);obsMsg(`Ter plaatse · ${T[a][2]} · +${cost} min`,r.t,fix);logStep(a,T[a][2],cost,newly.length,fix?"fix":"test",r.t,true);
+      if(fix){await typing(700);bubble("user","Oh, er is beeld! Wat was het?")}
+      coach(a,r,newly,before,fix);
+    }
+  }
+  else if(["c1","c2","c3"].includes(a)){await closeTicket(a);return}
+  S.busy=false;refresh();armIdle();
+}
+function coach(id,r,newly,before,fix){
+  const h=SH.help,basics=S.used.led||S.used.osd||S.used.pcon||S.used.photo;
+  if(OPEN_CASE.includes(id)&&!basics)note("Hola, je opent de kast al! Je weet nog niet eens wat het scherm toont. Eerst de eenvoudige, snelle controles.","warn");
+  if(r.k==="na")note("Dit kan hier niet: daarvoor heb je een werkend Windows met beeld nodig, of een losse pc. Kies iets anders.","warn");
+  const n=newly.length,left=S.alive.size;
+  if(fix){note(h===1&&left===1?"Er is beeld, en er blijft maar één oorzaak over. Selecteer ze rechts en sluit het ticket.":"Er is weer beeld! Welke oorzaak was het precies?","good");return}
+  if(h===3)return;
+  if(before>1&&n===0&&r.k!=="na"){S.useless++;note("Dit leverde niets nieuws op: het sluit geen enkele oorzaak uit. Kies iets dat verschil maakt tussen de oorzaken die nog overblijven.","warn");return}
+  if(h===2){if(n>0)note(`Deze waarneming sluit ${n===1?"één oorzaak":n+" oorzaken"} uit. Streep ze weg in je lijst.`);return}
+  if(n>=6)note(`Sterke zet! Je sluit in één keer ${n} oorzaken uit.`,"good");
+  else if(n>0)note(`Je sluit ${n===1?"één oorzaak":n+" oorzaken"} uit${n<=3?": "+newly.map(x=>lc(x.d)).join(", "):""}.`);
+  if(left===1&&n>0)note(S.f.diagOnly?"Er blijft één oorzaak over. Dit kan je niet ter plekke herstellen: sluit het ticket en leg uit wat er gebeurt.":"Er blijft nog maar één oorzaak over. Selecteer ze rechts en sluit het ticket!","good");
+  else if(left>1&&left<=3&&n>0)note(`Nog ${left} kandidaten. Wat maakt het verschil tussen die ${left}?`);
+}
+function tip(){
+  if(S.busy||S.stage!=="work")return;spend(2,400);S.tips++;logStep("tip","Tip van Sam",2,0,"info");
+  const alive=FAULTS.filter(x=>S.alive.has(x.id));let best=null,score=0;
+  Object.keys(T).filter(t=>t!=="change"&&t!=="photo"&&!S.used[t]).forEach(t=>{const gr=new Set(alive.map(x=>OBS[t](x).k)).size;
+    const c=T[t][3]+(T[t][4][0]==="o"&&!S.onsite?5:0);const sc=(gr-1)/c;if(gr>1&&sc>score){best=t;score=sc}});
+  if(alive.length===1)note(SH.help===1?"Je hebt genoeg informatie: er blijft één oorzaak over. Sluit het ticket.":"Je hebt genoeg informatie verzameld. Bekijk je waarnemingen en stel je diagnose.");
+  else if(!best)note("Niets maakt nog verschil. Kies de oorzaak die het best past bij wat je weet.");
+  else if(T[best][4][0]==="o"&&!S.onsite)note(`Tip: via de chat kom je niet verder. Ga ter plaatse en <b>${lc(T[best][2])}</b>.`);
+  else note(`Tip: probeer <b>${S.onsite?lc(T[best][2]):"'"+T[best][0]+"'"}</b>. Dat maakt onderscheid tussen de oorzaken die nog mogelijk zijn.`);
+  renderDet();armIdle();
+}
+async function diagnose(){
+  if(!S.sel||S.busy||S.stage!=="work")return;
+  if(SH.help===3&&!S.ev.size)return;
+  const f=S.f,pk=FX(S.sel);S.busy=true;refresh();
+  if(S.sel!==f.id){
+    const was=SH.help===1&&!S.alive.has(S.sel);S.wrong++;if(SH.help===1){S.alive.delete(S.sel);S.elimBy[S.sel]="foute oplossing"}
+    if(SH.help===2)S.struck.add(S.sel);
+    logStep("wrong","Foute oplossing: "+lc(pk.d),10,0,"bad");S.sel=null;S.diagOpen=false;
+    sys(`Je voert een oplossing uit voor: ${lc(pk.d)} · +10 min`);spend(10,700);await typing(1200);bubble("user","Ik heb nog altijd geen beeld hoor…");
+    note(was?"Die oorzaak had je zelf al uitgesloten. Let goed op je lijst!":"Dat was fout. Bekijk je waarnemingen opnieuw: welke oorzaken passen daar echt bij?","warn");
+    toast("Foute oplossing: +10 minuten");S.busy=false;refresh();armIdle();return;
+  }
+  if(SH.help===3){
+    const tests=[...new Set([...S.ev].map(i=>S.log[i].id))];
+    const cand=FAULTS.filter(x=>tests.every(t=>OBS[t](x).k===OBS[t](f).k));
+    S.evOk=cand.length===1;S.evOther=cand.filter(x=>x.id!==f.id);S.gamble=!S.evOk;
+  }else S.gamble=S.alive.size>1;
+  S.diagOpen=false;
+  if(!S.v.fixed){
+    const fc=f.fix.length?Math.min(...f.fix.map(t=>T[t][3])):0;
+    sys(`Oplossing uitgevoerd: ${lc(f.d)}${fc?` · +${fc} min`:""}`);if(fc){spend(fc,500);logStep("fixauto","Oplossing uitvoeren",fc,0,"fix")}
+    fixIt();if(S.onsite)renderScene();await typing(900);bubble("user",f.diagOnly?"Oké, bedankt voor de uitleg.":"Ik heb weer beeld!");
+  }
+  if(S.gamble)note(SH.help===3?`Juist, maar je bewijs volstaat niet: met die waarnemingen kon het ook nog ${S.evOther.slice(0,3).map(x=>"'"+lc(x.d)+"'").join(", ")}${S.evOther.length>3?" of nog andere":""} zijn. Daarom één ster minder.`:
+    `Juist, maar je gokte: er waren nog ${S.alive.size} oorzaken mogelijk. Daarom één ster minder. Een goede technieker bevestigt eerst.`,"warn");
+  else if(SH.help===3)note("Juist, en je bewijs is sluitend. Zo werkt een echte technieker.","good");
+  S.stage="closing";S.busy=false;refresh();
+}
+async function closeTicket(a){
+  const f=S.f,nm=S.p[0];
+  if(a==="c1")bubble("agent",`${f.sol} Laat gerust iets weten als het opnieuw gebeurt. Fijne dag!`);else if(a==="c2")bubble("agent","Opgelost. Ticket wordt gesloten.");
+  let cs=5-(S.greet==="g1"?0:1)-S.wrong-(S.t>Math.round(f.par*1.6)?1:0)-(a==="c1"?0:a==="c2"?1:2);cs=Math.max(1,Math.min(5,cs));
+  if(a!=="c3"){await typing(1000);bubble("user",cs>=5?"Super, dank je wel voor de snelle hulp!":cs===4?"Bedankt, het werkt weer.":cs===3?"Oké. Het duurde wel even.":"Eindelijk… Ik heb mijn werk moeten uitstellen.")}
+  else note("Je sluit het ticket zonder iets te zeggen. De gebruiker weet niet wat er mis was en of het opnieuw kan gebeuren.","warn");
+  if(a==="c2")note("Leg de gebruiker kort uit wat er mis was. Zo voorkom je dat het opnieuw gebeurt.","warn");
+  let st=starsFor(S.t);if(S.gamble)st=Math.max(1,st-1);
+  const pts=ptsOf(st,cs);
+  let xp=st*20+(cs>=4?10:0);if(P.best[f.id])xp=Math.round(xp/2);
+  P.best[f.id]=Math.max(P.best[f.id]||0,st);if(cs===5)P.csat5++;if(!S.gamble)P.noGamble++;if(!S.onsite)P.chatFix++;save();
+  SH.res[SH.idx]={f,st,cs,t:S.t,pts,steps:S.log.length,wrong:S.wrong,gamble:!!S.gamble,p:S.p};
+  S.stage="done";clearTimeout(idleT);S.busy=false;
+  sys(`Ticket #${S.no} gesloten · ${nm} gaf ${cs}/5`);
+  const last=SH.idx===SH.list.length-1;
+  const card=document.createElement("div");card.className="endcard";
+  card.innerHTML=`<div class="end-top">${starHTML(st,"big")}<div><span class="eyebrow">Technische score</span><h3>${f.d}</h3></div></div>
+    <dl class="stats"><div><dt>Tijd</dt><dd>${S.t} min</dd><small>3 ★ bij ${f.par} min of minder</small></div><div><dt>Tevredenheid</dt><dd>${cs}/5</dd><small>${"★".repeat(cs)}${"☆".repeat(5-cs)}</small></div>
+    <div><dt>Stappen</dt><dd>${S.log.filter(e=>e.cost>0).length}</dd><small>${S.log.filter(e=>e.kind==="test"&&e.n===0).length} zonder resultaat</small></div><div><dt>Fouten</dt><dd>${S.wrong}</dd><small>${SH.help===3?(S.evOk?"bewijs sluitend":"bewijs onvolledig"):S.gamble?"gegokt":"niet gegokt"}</small></div></dl>
+    ${SH.exam?"":debriefHTML(f)}${SH.exam?"":`<div class="quiz" id="squiz"></div>`}
+    <div class="wiz-actions"><button class="btn primary" id="snext">${last?"Naar het dagrapport →":"Volgende melding →"}</button></div>`;
+  add(card);const nx=$("snext");nx.onclick=()=>{if(nx.disabled)return;nx.disabled=true;if(last)renderReport();else{SH.idx++;newTicket()}};
+  if(!SH.exam)renderQuiz(f);
+  refresh();addXP(xp,"ticket afgehandeld");
+}
+function debriefHTML(f){
+  const mine=S.log.filter(e=>e.cost>0||e.kind==="move");
+  const cls=e=>e.kind==="bad"?"bad":e.kind==="fix"?"fix":e.kind==="move"?"move":e.kind==="info"?"info":e.n>0?"good":"none";
+  const sub=e=>e.kind==="bad"?"fout":e.kind==="fix"?"oplossing":e.kind==="move"?(e.n?`rondkijken: −${e.n}`:"verplaatsing"):e.kind==="info"?"spoor":e.n>0?`−${e.n} oorzaken`:"niets nieuws";
+  const ideal=f.rt.map(id=>id==="onsite"?["Ter plaatse",5]:[shortT(id),T[id][3]]);
+  const it=ideal.reduce((a,x)=>a+x[1],0);
+  const chipH=(l,c,k,s)=>`<li class="st ${k}"><b>${l}</b><small>${c} min${s?" · "+s:""}</small></li>`;
+  return `<div class="debrief"><h4>Nabespreking</h4>
+    <div class="route"><span class="rl">Jouw route · ${S.t} min</span><ol class="steps2">${mine.map(e=>chipH(e.label,e.cost,cls(e),sub(e))).join("")}</ol></div>
+    <div class="route"><span class="rl">Aanbevolen route · ${it} min</span><ol class="steps2">${ideal.map(([l,c],i)=>chipH(l,c,"ideal",f.rt[i]==="onsite"?"verplaatsing":"")).join("")}</ol></div>
+    <p class="why"><b>Waarom:</b> ${f.route}</p>
+    ${SH.help===3&&!S.evOk?`<p class="why warnc"><b>Bewijs:</b> met jouw gekozen waarnemingen kon het ook nog ${S.evOther.slice(0,3).map(x=>lc(x.d)).join(", ")} zijn.</p>`:""}</div>`;
+}
+function renderQuiz(f){
+  const el=$("squiz"),[q,ok,...wr]=f.q,opts=shuffle([ok,...wr]);
+  el.innerHTML=`<div class="ni-h"><span class="ava">S</span><b>Kennisvraag van Sam</b> · +10 XP</div><p class="qq">${q}</p><div class="chips">${opts.map((o,i)=>`<button class="chip" data-i="${i}">${o}</button>`).join("")}</div>`;
+  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const o=opts[+b.dataset.i],good=o===ok;
+    el.querySelectorAll(".chip").forEach(x=>{x.disabled=true;const v=opts[+x.dataset.i];if(v===ok)x.classList.add("right");else if(x===b)x.classList.add("wrong")});
+    el.insertAdjacentHTML("beforeend",`<p class="qfb ${good?"good":"bad"}">${good?"Juist!":"Niet juist. Het juiste antwoord: "+ok+"."}</p>`);
+    if(good){P.quiz++;save();addXP(10,"kennisvraag")}});
+}
+
+/* ================= RAPPORT ================= */
+function renderReport(){
+  VIEW="report";clearTimeout(idleT);
+  const r=SH.res,stars=r.reduce((a,x)=>a+x.st,0),cs=(r.reduce((a,x)=>a+x.cs,0)/r.length).toFixed(1),tm=r.reduce((a,x)=>a+x.t,0),pts=r.reduce((a,x)=>a+x.pts,0);
+  const score=Math.round(pts/(r.length*20)*100);
+  if(DAYS.find(d=>d.id===SH.id)){P.days[SH.id]=true;const pf=r.every(x=>x.st===3);const prev=P.dayBest[SH.id]||{};P.dayBest[SH.id]={stars:Math.max(prev.stars||0,stars),perfect:prev.perfect||pf}}
+  const now=new Date(),stamp=now.toLocaleDateString("nl-BE")+" "+now.toLocaleTimeString("nl-BE",{hour:"2-digit",minute:"2-digit"});
+  if(SH.exam)P.exams.push({score,date:stamp});
+  const code=makeCode({n:P.name||"",m:SH.id,h:SH.help,d:now.getTime(),s:score,r:r.map(x=>[FAULTS.indexOf(x.f),x.st,x.cs,x.t,x.wrong,x.gamble?1:0])});
+  P.codes.push({label:`${SH.m.day} · ${stamp}${SH.exam?` · ${score}/100`:""}`,code});if(P.codes.length>30)P.codes=P.codes.slice(-30);
+  save();checkBadges();renderHUD();
+  const grade=score>=90?"Uitmuntend":score>=70?"Geslaagd":score>=50?"Bijna":"Nog oefenen";
+  $("app").innerHTML=`<section class="report">
+   <div class="rep-h"><div><span class="eyebrow">${SH.m.day} · ${SH.exam?"examenrapport":"dagrapport"}</span><h2>${SH.m.t}</h2>
+     <p class="muted">${esc(P.name||"Naam niet ingevuld")} · ${stamp}</p></div>
+     ${SH.exam?`<div class="score-big"><b>${score}</b><span>/100</span><small>${grade}</small></div>`:`<div class="score-big"><b>${stars}</b><span>/${r.length*3} ★</span><small>${grade}</small></div>`}</div>
+   <dl class="stats wide"><div><dt>Tickets</dt><dd>${r.length}</dd></div><div><dt>Gem. tevredenheid</dt><dd>${cs}/5</dd></div><div><dt>Totale tijd</dt><dd>${tm} min</dd></div><div><dt>Fouten</dt><dd>${r.reduce((a,x)=>a+x.wrong,0)}</dd></div></dl>
+   <div class="tblwrap"><table><thead><tr><th>Gebruiker</th><th>Oorzaak</th><th>Onderdeel</th><th>Tijd</th><th>Techniek</th><th>Tevredenheid</th>${SH.exam?"<th>Punten</th>":""}</tr></thead>
+    <tbody>${r.map(x=>`<tr><td>${x.p[0]}</td><td>${x.f.d}</td><td><span class="cat c-${x.f.cat}">${CATS[x.f.cat]}</span></td><td>${x.t} min</td><td>${starHTML(x.st,"sm")}${x.gamble?` <small>${SH.help===3?"bewijs onvolledig":"gok"}</small>`:""}</td><td>${x.cs}/5</td>${SH.exam?`<td>${x.pts}/20</td>`:""}</tr>`).join("")}</tbody></table></div>
+   <div class="codebox"><div><b>Jouw rapportcode</b><p class="muted">Kopieer deze code en bezorg ze aan je leerkracht, bijvoorbeeld via Smartschool of mail. Je vindt ze later ook terug onderaan de planning.</p></div>
+     <div class="codeline"><code id="rcode">${code}</code><button class="btn sm2" data-copy="${code}">Kopieer</button></div></div>
+   <div class="wiz-actions"><button class="btn" id="rhome">← Terug naar de planning</button><button class="btn primary" id="ragain">Opnieuw spelen</button></div></section>`;
+  bindCopy($("app"));
+  $("rhome").onclick=renderHome;$("ragain").onclick=()=>renderBrief(SH.id);
+  window.scrollTo({top:0});
+}
+renderHUD();renderHome();
+(async()=>{try{const u=await window.claude?.use?.("user");if(u&&await u.isOwner()){OWNER=true;if(VIEW==="home")renderHome()}}catch(e){}})();
+
+$("brand").onclick=()=>{if(VIEW!=="shift")renderHome()};
+</script>
+
+</body></html>
